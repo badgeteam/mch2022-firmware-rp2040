@@ -10,7 +10,7 @@ UF2 := mch2022_firmware.uf2
 all: firmware flash
 	@echo "all done :3"
 
-firmware: $(BUILD_DIR) $(GEN_DIR) env_vars
+firmware: $(BUILD_DIR) $(GEN_DIR)
 	cd $(BUILD_DIR); cmake -DCMAKE_INSTALL_PREFIX=$INSTALL_PREFIX ..
 	$(MAKE) -C $(BUILD_DIR) --no-print-directory all install
 
