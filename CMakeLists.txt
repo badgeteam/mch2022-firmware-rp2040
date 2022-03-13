@@ -58,20 +58,10 @@ set(FLASHLOADER_UF2 ${CMAKE_CURRENT_BINARY_DIR}/${FLASHLOADER}.uf2)
 
 set(FIRMWARE firmware)
 
-#add_subdirectory(i2c_slave)
-
 # Project source files
 add_executable(${FIRMWARE}
     main.c
-    #usb_descriptors.c
-    #usb_hid.c
-    #i2c_peripheral.c
-    #uart_task.c
-    #webusb_task.c
-    #stdio_cdc2.c
-    #msc_disk.c
-    #flashloader_interface.c
-    #lcd.c
+    usb_descriptors.c
 )
 
 target_include_directories(${FIRMWARE} PUBLIC
@@ -79,17 +69,16 @@ target_include_directories(${FIRMWARE} PUBLIC
 
 target_link_libraries(${FIRMWARE}
     pico_stdlib
-    #pico_unique_id
-    #hardware_watchdog
-    #hardware_flash
-    #hardware_uart
-    #hardware_pio
-    #hardware_pwm
-    #hardware_adc
-    #pico_multicore
-    #tinyusb_device
-    #tinyusb_board
-    #i2c_slave
+    pico_unique_id
+    hardware_watchdog
+    hardware_flash
+    hardware_uart
+    hardware_pio
+    hardware_pwm
+    hardware_adc
+    pico_multicore
+    tinyusb_device
+    tinyusb_board
 )
 
 #pico_generate_pio_header(${FIRMWARE} ${CMAKE_CURRENT_LIST_DIR}/generated)

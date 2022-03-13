@@ -27,9 +27,6 @@ install_rules:
 	@echo "\tudevadm control --reload-rules"
 	@echo "\tudevadm trigger"
 
-env_vars:
-	set -e -u # this does not work yet, please run manually, this will be run in a child process, but not the parrent console
-
 $(BUILD_DIR):
 	mkdir -p $@
 
