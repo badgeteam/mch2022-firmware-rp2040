@@ -60,7 +60,7 @@
 //#define ANALOG_VUSB_ADC 0
 
 // System state GPIOs
-//#define USB_DET_PIN 26
+#define USB_DET_PIN 26
 //#define BATT_CHRG_PIN 23
 
 // SAO GPIOs
@@ -73,6 +73,6 @@
 //#define PROTO_2_PIN 10
 
 // USB virtual device numbers
-//#define USB_CDC_ESP32 0
-//#define USB_CDC_FPGA 1
-//#define USB_CDC_STDIO 2
+#define USB_CDC_ESP32 0
+#define USB_CDC_FPGA 1
+#define USB_CDC_STDIO 2
