@@ -2,6 +2,8 @@
 
 ### todo
  - [ ] Implement USB -> Serial
+  - [x] Build USB cdc
+  - [ ] Build the serial part
   - [ ] Implement RST and EN lines for ESP32
   - [ ] Implement as full functioning ESP32 programmer
  - [ ] Implement I2C device

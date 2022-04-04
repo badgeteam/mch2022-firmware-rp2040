@@ -8,7 +8,6 @@ int main(void)
   while (1)
   {
     tud_task(); // tinyusb device task
-    cdc_task();
   }
 
   return 0;
