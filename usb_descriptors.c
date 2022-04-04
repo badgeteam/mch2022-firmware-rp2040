@@ -1,5 +1,6 @@
 /**
  * Copyright (c) 2022 Nicolai Electronics
+ * Copyright (c) 2022 Jana Marie Hemsing
  * Copyright (c) 2019 Ha Thach (tinyusb.org)
  *
  * SPDX-License-Identifier: MIT
@@ -20,8 +21,6 @@ char const* string_desc_arr [] = {
   "RP2040 console",              // 5: CDC Interface
   "WebUSB ESP32 console",        // 6: WebUSB Interface: console
   "WebUSB control interface"     // 7: WebUSB Interface: control
-  //"HID",                         // 8: HID interface
-  //"Mass storage"                 // 9: Mass storage interface
 };
 
 enum {
@@ -33,8 +32,6 @@ enum {
     STRING_DESC_CDC_2,
     STRING_DESC_WEBUSB_UART,
     STRING_DESC_WEBUSB_FS,
-    //STRING_DESC_HID,
-    //STRING_DESC_MSC,
     STRING_DESC_SERIAL // (Not in the string description array)
 };
 
@@ -80,7 +77,6 @@ uint16_t const* tud_descriptor_string_cb(uint8_t index, uint16_t langid) {
 }
 
 // Device descriptors
-
 tusb_desc_device_t const desc_device = {
     .bLength            = sizeof(tusb_desc_device_t),
     .bDescriptorType    = TUSB_DESC_DEVICE,
@@ -102,22 +98,7 @@ uint8_t const * tud_descriptor_device_cb(void) {
   return (uint8_t const *) &desc_device;
 }
 
-// HID descriptor
-uint8_t const desc_hid_report[] =
-{
-  //TUD_HID_REPORT_DESC_KEYBOARD( HID_REPORT_ID(REPORT_ID_KEYBOARD         )),
-  //TUD_HID_REPORT_DESC_MOUSE   ( HID_REPORT_ID(REPORT_ID_MOUSE            )),
-  //TUD_HID_REPORT_DESC_CONSUMER( HID_REPORT_ID(REPORT_ID_CONSUMER_CONTROL )),
-  //TUD_HID_REPORT_DESC_GAMEPAD ( HID_REPORT_ID(REPORT_ID_GAMEPAD          ))
-};
-
-uint8_t const * tud_hid_descriptor_report_cb(uint8_t instance) {
-  (void) instance;
-  return desc_hid_report;
-}
-
 // Configuration Descriptor
-
 enum {
   ITF_NUM_CDC_0,
   ITF_NUM_CDC_0_DATA,
@@ -125,14 +106,12 @@ enum {
   ITF_NUM_VENDOR_1,
   ITF_NUM_CDC_1,
   ITF_NUM_CDC_1_DATA,
-  ITF_NUM_HID,
   ITF_NUM_CDC_2,
   ITF_NUM_CDC_2_DATA,
-  ITF_NUM_MSC,
   ITF_NUM_TOTAL
 };
 
-#define CONFIG_TOTAL_LEN    (TUD_CONFIG_DESC_LEN + CFG_TUD_CDC * TUD_CDC_DESC_LEN + TUD_HID_DESC_LEN + CFG_TUD_VENDOR * TUD_VENDOR_DESC_LEN + CFG_TUD_MSC * TUD_MSC_DESC_LEN)
+#define CONFIG_TOTAL_LEN    (TUD_CONFIG_DESC_LEN + CFG_TUD_CDC * TUD_CDC_DESC_LEN + CFG_TUD_HID * TUD_HID_DESC_LEN + CFG_TUD_VENDOR * TUD_VENDOR_DESC_LEN + CFG_TUD_MSC * TUD_MSC_DESC_LEN)
 
 #define EPNUM_CDC_0_NOTIF  0x81 // Endpoint 1: CDC serial port for ESP32 console, control
 #define EPNUM_CDC_0_OUT    0x02 // Endpoint 2: CDC serial port for ESP32 console, data
@@ -148,14 +127,9 @@ enum {
 #define EPNUM_CDC_1_OUT    0x06 // Endpoint 6: CDC serial port for FPGA console, data
 #define EPNUM_CDC_1_IN     0x86
 
-#define EPNUM_HID          0x87 // Endpoint 7: Composite HID device for emulating keyboard, mouse, joystick and media keys
-
 #define EPNUM_CDC_2_NOTIF  0x88 // Endpoint 8: CDC serial port for RP2040 console, control
 #define EPNUM_CDC_2_OUT    0x09 // Endpoint 9: CDC serial port for RP2040 console, data
 #define EPNUM_CDC_2_IN     0x89
-
-#define EPNUM_MSC_OUT      0x0A // Endpoint 10: Mass storage device
-#define EPNUM_MSC_IN       0x8A
 
 uint8_t const desc_fs_configuration[] = {
     // Config number, interface count, string index, total length, attribute, power in mA
@@ -170,15 +144,9 @@ uint8_t const desc_fs_configuration[] = {
     // 3rd CDC: Interface number, string index, EP notification address and size, EP data address (out, in) and size.
     TUD_CDC_DESCRIPTOR(ITF_NUM_CDC_2, STRING_DESC_CDC_2, EPNUM_CDC_2_NOTIF, 8, EPNUM_CDC_2_OUT, EPNUM_CDC_2_IN, 64),
 
-    // HID: Interface number, string index, protocol, report descriptor len, EP In address, size & polling interval
-    //TUD_HID_DESCRIPTOR(ITF_NUM_HID, STRING_DESC_HID, HID_ITF_PROTOCOL_NONE, sizeof(desc_hid_report), EPNUM_HID, CFG_TUD_HID_EP_BUFSIZE, 5),
-
     // WebUSB: Interface number, string index, EP Out & IN address, EP size
     TUD_VENDOR_DESCRIPTOR(ITF_NUM_VENDOR_0, STRING_DESC_WEBUSB_UART, EPNUM_VENDOR_0_OUT, EPNUM_VENDOR_0_IN, 32),
     TUD_VENDOR_DESCRIPTOR(ITF_NUM_VENDOR_1, STRING_DESC_WEBUSB_FS, EPNUM_VENDOR_1_OUT, EPNUM_VENDOR_1_IN, 32),
-
-    // MSC: Interface number, string index, EP Out & EP In address, EP size
-    //TUD_MSC_DESCRIPTOR(ITF_NUM_MSC, STRING_DESC_MSC, EPNUM_MSC_OUT, EPNUM_MSC_IN, 64),
 };
 
 uint8_t const * tud_descriptor_configuration_cb(uint8_t index) {
@@ -187,7 +155,6 @@ uint8_t const * tud_descriptor_configuration_cb(uint8_t index) {
 }
 
 // WebUSB
-
 #define BOS_TOTAL_LEN      (TUD_BOS_DESC_LEN + TUD_BOS_WEBUSB_DESC_LEN + TUD_BOS_MICROSOFT_OS_DESC_LEN)
 #define MS_OS_20_DESC_LEN  0xB2
 
