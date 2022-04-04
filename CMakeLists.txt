@@ -63,7 +63,8 @@ set(FIRMWARE firmware)
 # Project source files
 add_executable(${FIRMWARE}
     main.c
-    usb_descriptors.c
+    usb/usb_descriptors.c
+    usb/usb_cdc.c
     #usb_hid.c
     #i2c_peripheral.c
     #uart_task.c
@@ -76,7 +77,9 @@ add_executable(${FIRMWARE}
 )
 
 target_include_directories(${FIRMWARE} PUBLIC
-        ${CMAKE_CURRENT_LIST_DIR})
+    ${CMAKE_CURRENT_LIST_DIR},
+    ${CMAKE_CURRENT_LIST_DIR}/usb
+)
 
 target_link_libraries(${FIRMWARE}
     pico_stdlib
