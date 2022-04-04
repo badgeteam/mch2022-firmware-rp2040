@@ -58,10 +58,21 @@ set(FLASHLOADER_UF2 ${CMAKE_CURRENT_BINARY_DIR}/${FLASHLOADER}.uf2)
 
 set(FIRMWARE firmware)
 
+#add_subdirectory(i2c_slave)
+
 # Project source files
 add_executable(${FIRMWARE}
     main.c
     usb_descriptors.c
+    #usb_hid.c
+    #i2c_peripheral.c
+    #uart_task.c
+    #webusb_task.c
+    #stdio_cdc2.c
+    #msc_disk.c
+    #flashloader_interface.c
+    #ws2812.c
+    #lcd.c
 )
 
 target_include_directories(${FIRMWARE} PUBLIC
@@ -81,7 +92,7 @@ target_link_libraries(${FIRMWARE}
     tinyusb_board
 )
 
-#pico_generate_pio_header(${FIRMWARE} ${CMAKE_CURRENT_LIST_DIR}/generated)
+#pico_generate_pio_header(${FIRMWARE} ${CMAKE_CURRENT_LIST_DIR}/ws2812.pio OUTPUT_DIR ${CMAKE_CURRENT_LIST_DIR}/generated)
 
 pico_add_uf2_output(${FIRMWARE})
 pico_add_hex_output(${FIRMWARE})

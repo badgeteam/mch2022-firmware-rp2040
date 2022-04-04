@@ -1,7 +1,7 @@
 # shitty makefile, send help D:
 # Jana Marie Hemsing 2022
 
-INSTALL_PREFIX := $PWD
+INSTALL_PREFIX := $(shell pwd)
 BUILD_DIR := build
 GEN_DIR := generated
 
@@ -11,8 +11,9 @@ all: firmware flash
 	@echo "all done :3"
 
 firmware: $(BUILD_DIR) $(GEN_DIR)
-	cd $(BUILD_DIR); cmake -DCMAKE_INSTALL_PREFIX=$INSTALL_PREFIX ..
-	$(MAKE) -C $(BUILD_DIR) --no-print-directory all install
+	echo $(INSTALL_PREFIX)
+	cd $(BUILD_DIR); cmake -DCMAKE_INSTALL_PREFIX=$(INSTALL_PREFIX) ..
+	$(MAKE) -C $(BUILD_DIR) --no-print-directory all
 
 flash:
 	picotool load $(BUILD_DIR)/$(UF2)
