@@ -1,5 +1,9 @@
 #pragma once
 
+#include "tusb.h"
+#include "bsp/board.h"
+#include "pico/unique_id.h"
+
 enum
 {
   VENDOR_REQUEST_WEBUSB = 1,

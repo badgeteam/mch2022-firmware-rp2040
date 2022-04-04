@@ -6,9 +6,6 @@
  * SPDX-License-Identifier: MIT
  */
 
-#include "tusb.h"
-#include "bsp/board.h"
-#include "pico/unique_id.h"
 #include "usb_descriptors.h"
 
 // String descriptors
