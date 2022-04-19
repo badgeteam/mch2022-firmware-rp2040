@@ -25,13 +25,10 @@ int main(void) {
     tusb_init();
     setup_uart();
     
-    gpio_init(USB_DET_PIN);
     gpio_init(BATT_CHRG_PIN);
-    gpio_set_dir(USB_DET_PIN, false);
     gpio_set_dir(BATT_CHRG_PIN, false);
     
     adc_init();
-    adc_gpio_init(ANALOG_TEMP_PIN);
     adc_gpio_init(ANALOG_VBAT_PIN);
     adc_gpio_init(ANALOG_VUSB_PIN);
     

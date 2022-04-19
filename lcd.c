@@ -29,27 +29,14 @@ uint32_t pwm_set_freq_duty(uint slice_num, uint chan, uint32_t freq, int duty) {
 
 void lcd_init() {
     gpio_init(LCD_BACKLIGHT_PIN);
-    gpio_init(LCD_MODE_PIN);
-    gpio_init(LCD_RESET_PIN);
     gpio_set_dir(LCD_BACKLIGHT_PIN, true);
-    gpio_set_dir(LCD_MODE_PIN, true);
-    gpio_set_dir(LCD_RESET_PIN, true);
     gpio_put(LCD_BACKLIGHT_PIN, false);
-    lcd_mode(false);
-    
     gpio_set_function(LCD_BACKLIGHT_PIN, GPIO_FUNC_PWM);
     uint slice_num = pwm_gpio_to_slice_num(LCD_BACKLIGHT_PIN);
     uint chan = pwm_gpio_to_channel(LCD_BACKLIGHT_PIN);
     pwm_set_freq_duty(slice_num, chan, 200, 0);
     pwm_set_enabled(slice_num, true);
     lcd_backlight(255);
-}
-
-void lcd_mode(bool parallel_mode) {
-    gpio_put(LCD_MODE_PIN, parallel_mode);
-    gpio_put(LCD_RESET_PIN, false);
-    sleep_ms(10);
-    gpio_put(LCD_RESET_PIN, true);
 }
 
 void lcd_backlight(uint8_t value) {
