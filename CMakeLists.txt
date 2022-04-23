@@ -19,12 +19,15 @@ endif()
 
 pico_sdk_init()
 
+add_subdirectory(i2c_slave)
+
 # Project source files
 add_executable(${NAME}
     main.c
     usb_descriptors.c
     uart_task.c
     lcd.c
+    i2c_peripheral.c
 )
 
 target_include_directories(${NAME} PUBLIC
@@ -39,6 +42,7 @@ target_link_libraries(${NAME}
     hardware_pio
     hardware_pwm
     hardware_adc
+    i2c_slave
     tinyusb_device
     tinyusb_board
 )

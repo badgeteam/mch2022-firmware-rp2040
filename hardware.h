@@ -7,7 +7,7 @@
 #define UART_ESP32_BAUDRATE 115200
 
 // I2C0: system I2C bus
-#define I2C_SYSTEM i2c0
+#define I2C_SYSTEM i2c1
 #define I2C_SYSTEM_SDA_PIN 2
 #define I2C_SYSTEM_SCL_PIN 3
 
@@ -39,7 +39,7 @@
 // ESP32 control lines
 #define ESP32_BL_PIN 12 // Output, high for normal boot, low for download boot, also serves as IRQ
 #define ESP32_EN_PIN 13 // Output, high to enable ESP32, low to reset ESP32
-#define ESP32_WK_PIN 14 // Normally set to input, set to output low to wake up the ESP32
+#define ESP32_INT_PIN 14
 
 // Analog inputs
 #define ANALOG_VUSB_PIN 28

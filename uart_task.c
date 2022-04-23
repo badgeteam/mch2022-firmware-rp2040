@@ -18,9 +18,6 @@ static uint8_t esp32_reset_state = 0;
 static uint8_t esp32_reset_app_state = 0;
 static absolute_time_t esp32_reset_timeout = 0;
 
-static bool esp32_wakeup_active = false;
-static absolute_time_t esp32_wakeup_timeout = 0;
-
 cdc_line_coding_t current_line_coding[2];
 cdc_line_coding_t requested_line_coding[2];
 
@@ -28,15 +25,12 @@ bool ready = false;
 
 void setup_uart() {
     gpio_init(ESP32_BL_PIN);
-    gpio_set_dir(ESP32_BL_PIN, true);
-    gpio_put(ESP32_BL_PIN, true);
+    gpio_set_dir(ESP32_BL_PIN, false);
+    gpio_put(ESP32_BL_PIN, false);
 
     gpio_init(ESP32_EN_PIN);
     gpio_set_dir(ESP32_EN_PIN, true);
     gpio_put(ESP32_EN_PIN, false);
-
-    gpio_init(ESP32_WK_PIN); // This is the PCA9555 interrupt line, do not set to output high!
-    gpio_set_dir(ESP32_WK_PIN, false);
 
     uart_init(UART_ESP32, 115200);
     gpio_set_function(UART_ESP32_TX_PIN, GPIO_FUNC_UART);
@@ -71,15 +65,7 @@ void setup_uart() {
     ready = true;
 }
 
-void wake_up_esp32() {
-    gpio_set_dir(ESP32_WK_PIN, true);
-    gpio_put(ESP32_WK_PIN, false);
-    esp32_wakeup_active = true;
-    esp32_wakeup_timeout = delayed_by_ms(get_absolute_time(), 1);
-}
-
 /*void send_interrupt_to_esp32() {
-    gpio_put(ESP32_BL_PIN, false);
     esp32_reset_active = true;
     esp32_reset_timeout = delayed_by_ms(get_absolute_time(), 5);
 }*/
@@ -228,14 +214,9 @@ void cdc_task(void) {
         } else {
             esp32_reset_state = 0x00;
             esp32_reset_app_state = 0x00;
-            gpio_put(ESP32_BL_PIN, true);
+            gpio_set_dir(ESP32_BL_PIN, false);
             gpio_put(ESP32_EN_PIN, true);
         }
-    }
-    
-    if (esp32_wakeup_active && now > esp32_wakeup_timeout) {
-        esp32_wakeup_active = false;
-        gpio_set_dir(ESP32_WK_PIN, false);
     }
 }
 
@@ -249,7 +230,11 @@ void tud_cdc_line_coding_cb(uint8_t itf, cdc_line_coding_t const* new_line_codin
 }
 
 void esp32_reset(bool download_mode) {
-    gpio_put(ESP32_BL_PIN, !download_mode);
+    if (download_mode) {
+        gpio_set_dir(ESP32_BL_PIN, true); // Output, RP2040 pulls low
+    } else {
+        gpio_set_dir(ESP32_BL_PIN, false); // Input, ext. pull-up high
+    }
     gpio_put(ESP32_EN_PIN, false);
     esp32_reset_active = true;
     esp32_reset_timeout = delayed_by_ms(get_absolute_time(), 25);

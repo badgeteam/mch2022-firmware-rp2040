@@ -19,6 +19,7 @@
 #include "hardware.h"
 #include "lcd.h"
 #include "hardware/adc.h"
+#include "i2c_peripheral.h"
 
 int main(void) {
     board_init();
@@ -32,18 +33,23 @@ int main(void) {
     adc_gpio_init(ANALOG_VBAT_PIN);
     adc_gpio_init(ANALOG_VUSB_PIN);
     
-    esp32_reset(true); // Reset ESP32
     lcd_init();
+    
+    setup_i2c_registers();
+    setup_i2c_peripheral(I2C_SYSTEM, I2C_SYSTEM_SDA_PIN, I2C_SYSTEM_SCL_PIN, 0x17, 100000, i2c_slave_handler);
+    
+    esp32_reset(true); // Reset ESP32
     esp32_reset(false); // Start ESP32
 
     while (1) {
         tud_task(); // tinyusb device task
         cdc_task();
+        i2c_task();
         
-        if (board_button_read()) {
+        /*if (board_button_read()) {
             printf("Reset to USB bootloader...\r\n");
             reset_usb_boot(0, 0);
-        }
+        }*/
     }
 
     return 0;
@@ -51,17 +57,20 @@ int main(void) {
 
 // Invoked when device is mounted
 void tud_mount_cb(void) {
+    i2c_usb_set_mounted(true);
 }
 
 // Invoked when device is unmounted
 void tud_umount_cb(void) {
+    i2c_usb_set_mounted(false);
 }
 
 // Invoked when usb bus is suspended
 void tud_suspend_cb(bool remote_wakeup_en) {
-  (void) remote_wakeup_en;
+    i2c_usb_set_suspended(true, remote_wakeup_en);
 }
 
 // Invoked when usb bus is resumed
 void tud_resume_cb(void) {
+    i2c_usb_set_suspended(false, false);
 }
