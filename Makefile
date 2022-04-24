@@ -20,7 +20,7 @@ flash:
 	picotool reboot
 
 clean:
-	rm -r $(BUILD_DIR) $(GEN_DIR)
+	rm -rf $(BUILD_DIR) $(GEN_DIR)
 
 install_rules:
 	cp tools/99-pico.rules /etc/udev/rules.d/
