@@ -33,6 +33,10 @@ int main(void) {
     adc_gpio_init(ANALOG_VBAT_PIN);
     adc_gpio_init(ANALOG_VUSB_PIN);
     
+    gpio_init(IR_LED);
+    gpio_set_dir(IR_LED, true);
+    gpio_put(IR_LED, false);
+    
     lcd_init();
     
     setup_i2c_registers();
