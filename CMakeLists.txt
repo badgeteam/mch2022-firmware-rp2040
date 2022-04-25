@@ -63,6 +63,7 @@ set(FIRMWARE firmware)
 # Project source files
 add_executable(${FIRMWARE}
     main.c
+    esp32.c
     usb/usb_descriptors.c
     usb/usb_cdc.c
     #usb_hid.c
