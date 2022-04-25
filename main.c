@@ -4,6 +4,7 @@ int main(void)
 {
   board_init();
   tusb_init();
+  esp32_uart_init();
 
   while (1)
   {
