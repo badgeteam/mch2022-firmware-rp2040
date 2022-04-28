@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 3.12)
 
 # Project name
 set(NAME mch2022_firmware)
+set(BOOTLOADER mch2022_bootloader)
+set(COMBINED mch2022_combined)
 
 # Board type
 set(PICO_BOARD none)
@@ -21,7 +23,37 @@ pico_sdk_init()
 
 add_subdirectory(i2c_slave)
 
-# Project source files
+# Bootloader
+
+add_executable(${BOOTLOADER} bootloader/main.c bootloader/i2c_peripheral.c)
+
+function(target_cl_options option)
+    target_compile_options(${BOOTLOADER} PRIVATE ${option})
+    target_link_options(${BOOTLOADER} PRIVATE ${option})
+endfunction()
+
+target_cl_options("-Os")
+target_cl_options("-ffunction-sections")
+target_cl_options("-fdata-sections")
+target_link_options(${BOOTLOADER} PRIVATE "LINKER:--gc-sections")
+
+pico_add_extra_outputs(${BOOTLOADER})
+pico_set_binary_type(${BOOTLOADER} copy_to_ram)
+
+set_target_properties(${BOOTLOADER} PROPERTIES COMPILE_FLAGS "-Wall")
+
+pico_set_linker_script(${BOOTLOADER} ${CMAKE_CURRENT_SOURCE_DIR}/bootloader/bootloader.ld)
+
+target_link_libraries(${BOOTLOADER}
+                      pico_stdlib
+                      hardware_dma
+                      hardware_flash
+                      hardware_structs
+                      hardware_resets
+                      i2c_slave
+                      cmsis_core)
+
+# Firmware
 add_executable(${NAME}
     main.c
     usb_descriptors.c
@@ -48,3 +80,5 @@ target_link_libraries(${NAME}
 )
 
 pico_add_extra_outputs(${NAME})
+
+pico_set_linker_script(${NAME}  ${CMAKE_CURRENT_SOURCE_DIR}/firmware.ld)

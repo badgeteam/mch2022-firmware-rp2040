@@ -5,7 +5,9 @@ INSTALL_PREFIX := $PWD
 BUILD_DIR := build
 GEN_DIR := generated
 
-UF2 := mch2022_firmware.uf2
+BL_UF2 := mch2022_bootloader.uf2
+FW_UF2 := mch2022_firmware.uf2
+BL_HEADER := header.bin
 
 all: firmware flash
 	@echo "All tasks completed"
@@ -15,7 +17,9 @@ firmware: $(BUILD_DIR) $(GEN_DIR)
 	$(MAKE) -C $(BUILD_DIR) --no-print-directory all install
 
 flash:
-	picotool load $(BUILD_DIR)/$(UF2)
+	picotool load $(BUILD_DIR)/$(BL_UF2)
+	picotool load $(BUILD_DIR)/$(FW_UF2)
+	picotool load $(BUILD_DIR)/$(BL_HEADER) -t bin -o 0x10003000
 	picotool reboot
 
 clean:
