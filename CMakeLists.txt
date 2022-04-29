@@ -53,6 +53,8 @@ target_link_libraries(${BOOTLOADER}
                       i2c_slave
                       cmsis_core)
 
+pico_enable_stdio_usb(${BOOTLOADER} 1)
+
 # Firmware
 add_executable(${NAME}
     main.c
@@ -77,6 +79,7 @@ target_link_libraries(${NAME}
     i2c_slave
     tinyusb_device
     tinyusb_board
+    cmsis_core
 )
 
 pico_add_extra_outputs(${NAME})

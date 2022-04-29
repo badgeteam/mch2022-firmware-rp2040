@@ -34,6 +34,7 @@ enum {
     I2C_REGISTER_ADC_VALUE_VBAT1,
     I2C_REGISTER_ADC_VALUE_VBAT2,
     I2C_REGISTER_USB,
+    I2C_REGISTER_BL_TRIGGER,
     I2C_REGISTER_SCRATCH0, // Used by the ESP32 to store boot parameters, can also be read and written to from WebUSB
     I2C_REGISTER_SCRATCH1,
     I2C_REGISTER_SCRATCH2,

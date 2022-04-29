@@ -22,6 +22,8 @@
 #define PICO_FLASH_SIZE_BYTES (2 * 1024 * 1024)
 #endif
 
+#define DEBUG
+
 #ifdef DEBUG
 #include <stdio.h>
 #include "pico/stdio_usb.h"
@@ -66,7 +68,7 @@
 #define RSP_OK   (('O' << 0) | ('K' << 8) | ('O' << 16) | ('K' << 24))
 #define RSP_ERR  (('E' << 0) | ('R' << 8) | ('R' << 16) | ('!' << 24))
 
-#define IMAGE_HEADER_OFFSET (12 * 1024)
+#define IMAGE_HEADER_OFFSET (32 * 1024)
 
 #define WRITE_ADDR_MIN (XIP_BASE + IMAGE_HEADER_OFFSET + FLASH_SECTOR_SIZE)
 #define ERASE_ADDR_MIN (XIP_BASE + IMAGE_HEADER_OFFSET)
@@ -426,40 +428,52 @@ static uint32_t handle_write(uint32_t *args_in, uint8_t *data_in, uint32_t *resp
 }
 
 struct image_header {
+	uint32_t addr;
 	uint32_t vtor;
 	uint32_t size;
 	uint32_t crc;
-	uint8_t pad[FLASH_PAGE_SIZE - (3 * 4)];
+	uint8_t pad[FLASH_PAGE_SIZE - (4 * 4)];
 };
 static_assert(sizeof(struct image_header) == FLASH_PAGE_SIZE, "image_header must be FLASH_PAGE_SIZE bytes");
 
 static bool image_header_ok(struct image_header *hdr)
 {
 	uint32_t *vtor = (uint32_t *)hdr->vtor;
+	uint32_t calc = calc_crc32((void *)hdr->addr, hdr->size);
 
-	uint32_t calc = calc_crc32((void *)hdr->vtor, hdr->size);
+	/*printf("Reset vector    : %08X\n", hdr->vtor);
+	printf("Firmware address: %08X\n", hdr->addr);
+	printf("Firmware size   : %08X\n", hdr->size);
+	printf("Firmware CRC    : %08X\n", hdr->crc);
+	printf("Check CRC       : %08X\n", calc);*/
 	
-	i2c_bl_set_state(0x99);
-
 	// CRC has to match
 	if (calc != hdr->crc) {
-		i2c_bl_set_state((calc >> 0) & 0xFF);
+		//printf("CRC check failed");
 		return false;
 	}
+	
+	//printf("CRC check ok");
+	return true;
 
 	// Stack pointer needs to be in RAM
 	if (vtor[0] < SRAM_BASE) {
-		i2c_bl_set_state(0x02);
-		return false;
-	}
-
-	// Reset vector should be in the image, and thumb (bit 0 set)
-	if ((vtor[1] < hdr->vtor) || (vtor[1] > hdr->vtor + hdr->size) || !(vtor[1] & 1)) {
-		i2c_bl_set_state(0x04);
+		//printf("reset vector check failed 1");
 		return false;
 	}
 	
-	i2c_bl_set_state(0x05);
+	//printf("reset vector in RAM");
+	return false;
+
+	// Reset vector should be in the image, and thumb (bit 0 set)
+	if ((vtor[1] < hdr->vtor) || (vtor[1] > hdr->vtor + hdr->size) || !(vtor[1] & 1)) {
+		//printf("reset vector check failed 2");
+		return false;
+	}
+	
+	//printf("reset vector in IMAGE");
+	
+	//return false;
 
 	// Looks OK.
 	return true;
@@ -716,7 +730,8 @@ int main(void)
 		jump_to_vtor(vtor);
 	}
 
-	DBG_PRINTF_INIT();
+	//DBG_PRINTF_INIT();
+	stdio_usb_init();
 
 	uart_init(uart0, UART_BAUD);
 	gpio_set_function(UART_TX_PIN, GPIO_FUNC_UART);
@@ -729,9 +744,20 @@ int main(void)
 	uint8_t uart_buf[(sizeof(uint32_t) * (1 + MAX_NARG)) + MAX_DATA_LEN];
 	ctx.uart_buf = uart_buf;
 	enum state state = STATE_WAIT_FOR_SYNC;
+	
+	i2c_bl_set_state(0xA0);
+	sleep_ms(2000);
+	printf("~~~ BOOTLOADER: VERIFY IMAGE HEADER\n");
+	printf("Result: %d\n", image_header_ok(hdr));
+	i2c_bl_set_state(0xA1);
+	sleep_ms(2000);
+	printf("Would have jumped to %08X\n", XIP_BASE + IMAGE_HEADER_OFFSET);
+	i2c_bl_set_state(0xA2);
+	sleep_ms(2000);
+	printf("Starting UART download protocol...\n");
 
 	while (1) {
-		//i2c_bl_set_state((uint8_t) state);
+		i2c_bl_set_state((((uint8_t) state) & 0x0F) | 0xB0);
 		switch (state) {
 		case STATE_WAIT_FOR_SYNC:
 			DBG_PRINTF("wait_for_sync\n");

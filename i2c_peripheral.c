@@ -5,12 +5,15 @@
  * SPDX-License-Identifier: MIT
  */
 
+#include "RP2040.h"
 #include <i2c_fifo.h>
 #include <i2c_slave.h>
 #include <pico/stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include "bsp/board.h"
+#include "hardware/structs/watchdog.h"
+#include "hardware/watchdog.h"
 #include "i2c_peripheral.h"
 #include "lcd.h"
 
@@ -135,6 +138,8 @@ void i2c_slave_handler(i2c_inst_t *i2c, i2c_slave_event_t event) {
     }
 }
 
+#define BOOTLOADER_ENTRY_MAGIC 0xb105f00d
+
 void i2c_handle_register_write(uint8_t reg, uint8_t value) {
     switch (reg) {
         case I2C_REGISTER_GPIO_DIR:
@@ -159,6 +164,18 @@ void i2c_handle_register_write(uint8_t reg, uint8_t value) {
                 }
                 if (value & 0x02) {
                     // To-do: read ADC
+                }
+            break;
+        case I2C_REGISTER_BL_TRIGGER:
+                if (value == 0xBE) {
+                    hw_clear_bits(&watchdog_hw->ctrl, WATCHDOG_CTRL_ENABLE_BITS);
+                    watchdog_hw->scratch[5] = BOOTLOADER_ENTRY_MAGIC;
+                    watchdog_hw->scratch[6] = ~BOOTLOADER_ENTRY_MAGIC;
+                    watchdog_reboot(0, 0, 0);
+                    while (1) {
+                        tight_loop_contents();
+                        asm("");
+                    }
                 }
             break;
         default:
