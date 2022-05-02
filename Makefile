@@ -6,23 +6,20 @@ INSTALL_PREFIX := $PWD
 BUILD_DIR := build
 GEN_DIR := generated
 
-BL_UF2 := mch2022_bootloader.uf2
-FW_UF2 := mch2022_firmware.uf2
+BL_BIN := mch2022_bootloader.bin
 FW_BIN := mch2022_firmware.bin
-BL_HDR := header.bin
+CB_UF2 := mch2022.uf2
 
-all: firmware flash
+all: firmware combine flash
 	@echo "All tasks completed"
 
 firmware: $(BUILD_DIR) $(GEN_DIR)
 	cd $(BUILD_DIR); cmake -DCMAKE_INSTALL_PREFIX=$INSTALL_PREFIX ..
 	$(MAKE) -C $(BUILD_DIR) --no-print-directory all
-	python genheader.py
-
+	python genuf2.py $(BUILD_DIR)/$(BL_BIN) $(BUILD_DIR)/$(FW_BIN) $(BUILD_DIR)/$(CB_UF2)
+	
 flash:
-	picotool load $(BUILD_DIR)/$(BL_UF2)
-	picotool load $(BUILD_DIR)/$(FW_BIN) -t bin -o 0x10010000
-	picotool load $(BUILD_DIR)/$(BL_HDR) -t bin -o 0x10008000
+	picotool load $(BUILD_DIR)/$(CB_UF2)
 	picotool reboot
 
 clean:
