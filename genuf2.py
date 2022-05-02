@@ -47,12 +47,13 @@ def main():
     headerAddress     = 0x10008000
     appAddress        = 0x10010000
     
-    if len(sys.argv) != 3:
-        print("Usage: {} bootloader_binary application_binary")
+    if len(sys.argv) != 4:
+        print("Usage: {} bootloader_binary application_binary output_uf2")
         sys.exit(1)
     
     bootloaderFilename = sys.argv[1]
     appFilename = sys.argv[2]
+    outputFilename = sys.argv[3]
     
     with open(bootloaderFilename, "rb") as bootloaderFile:
         bootloaderBin = bootloaderFile.read()
@@ -101,7 +102,7 @@ def main():
         position += 256
         blockNumber += 1
 
-    with open("output.uf2", "wb") as outputFile:
+    with open(outputFilename, "wb") as outputFile:
         outputFile.write(outputUf2)
     
 
