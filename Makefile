@@ -10,7 +10,7 @@ BL_BIN := mch2022_bootloader.bin
 FW_BIN := mch2022_firmware.bin
 CB_UF2 := mch2022.uf2
 
-all: firmware combine flash
+all: firmware flash
 	@echo "All tasks completed"
 
 firmware: $(BUILD_DIR) $(GEN_DIR)

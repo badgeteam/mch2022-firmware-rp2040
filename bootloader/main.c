@@ -372,17 +372,27 @@ static uint32_t handle_erase(uint32_t *args_in, uint8_t *data_in, uint32_t *resp
 {
 	uint32_t addr = args_in[0];
 	uint32_t size = args_in[1];
+	
+	printf("Erase address: %08lX, size: %08lX\n", addr, size);
 
 	if ((addr < ERASE_ADDR_MIN) || (addr + size >= FLASH_ADDR_MAX)) {
 		// Outside flash
+		if (addr < ERASE_ADDR_MIN) {
+			printf("Outside flash (addr < ERASE_ADDR_MIN) (%08X < %08X)\n", addr, ERASE_ADDR_MIN);
+		}
+		if (addr + size >= FLASH_ADDR_MAX) {
+			printf("Outside flash (addr + size >= FLASH_ADDR_MAX) (%08X >= %08X)\n", addr + size, FLASH_ADDR_MAX);
+		}
 		return RSP_ERR;
 	}
 
 	if ((addr & (FLASH_SECTOR_SIZE - 1)) || (size & (FLASH_SECTOR_SIZE - 1))) {
 		// Must be aligned
+		printf("Must be aligned %lu & %lu || %lu & %lu\n", addr, (FLASH_SECTOR_SIZE - 1), size, (FLASH_SECTOR_SIZE - 1));
 		return RSP_ERR;
 	}
 
+	printf("Erase...\n");
 	flash_range_erase(addr - XIP_BASE, size);
 
 	return RSP_OK;
@@ -419,10 +429,20 @@ static uint32_t handle_write(uint32_t *args_in, uint8_t *data_in, uint32_t *resp
 {
 	uint32_t addr = args_in[0];
 	uint32_t size = args_in[1];
+	
+	printf("Write to address: %08lX, size: %08lX\n", addr, size);
+	
+	if (addr < WRITE_ADDR_MIN) {
+		// Outside flash
+		printf("Outside flash %08lX < %08lX\n", addr, WRITE_ADDR_MIN);
+		return RSP_ERR;
+	}
 
+	printf("Writing...\n");
 	flash_range_program(addr - XIP_BASE, data_in, size);
 
 	resp_args_out[0] = calc_crc32((void *)addr, size);
+	printf("CRC: %08lX\n", resp_args_out[0]);
 
 	return RSP_OK;
 }

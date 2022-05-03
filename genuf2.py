@@ -79,7 +79,6 @@ def main():
         data = bootloaderBin[position:256 + position]
         if len(data) < 1:
             break
-        print("Block {} of {}".format(blockNumber, totalBlocks))
         outputUf2 += generateBlock(blockNumber, totalBlocks, familyId, flags, bootloaderAddress + position, data)
         position += 256
         blockNumber += 1
