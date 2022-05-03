@@ -5,18 +5,12 @@ which allows the ESP32 to read button states and control things like the FPGA co
 
 ## To-do list
 
-
-
-
-# mch2022-firmware-rp2040
-
-### todo
- - [ ] Implement USB -> Serial
-  - [x] Build USB cdc
-  - [ ] Build the serial part
-  - [ ] Implement RST and EN lines for ESP32
-  - [ ] Implement as full functioning ESP32 programmer
- - [ ] Implement I2C device
- - [ ] LCD control
-  - [ ] Add RST + Mode IO
-  - [ ] Figure out and implement reset/switching logic
+ - [x] Implement USB -> Serial for ESP32
+ - [x] Implement USB -> Serial for FPGA
+ - [x] Implement boot mode selection and reset logic for programming the ESP32
+ - [x] Implement I2C peripheral
+ - [x] Implement bootloader
+ - [x] Implement LCD backlight control
+ - [ ] Bootloader cleanup
+ - [ ] Firmware cleanup
+ - [ ] Testing
