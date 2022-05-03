@@ -185,10 +185,10 @@ const struct command_desc cmds[] = {
 		.handle = &handle_write,
 	},
 	{
-		// SEAL vtor len crc
+		// SEAL addr vtor len crc
 		// OKOK
 		.opcode = CMD_SEAL,
-		.nargs = 3,
+		.nargs = 4,
 		.resp_nargs = 0,
 		.size = NULL,
 		.handle = &handle_seal,
@@ -461,37 +461,37 @@ static bool image_header_ok(struct image_header *hdr)
 	uint32_t *vtor = (uint32_t *)hdr->vtor;
 	uint32_t calc = calc_crc32((void *)hdr->addr, hdr->size);
 
-	/*printf("Reset vector    : %08X\n", hdr->vtor);
+	printf("Reset vector    : %08X\n", hdr->vtor);
 	printf("Firmware address: %08X\n", hdr->addr);
 	printf("Firmware size   : %08X\n", hdr->size);
 	printf("Firmware CRC    : %08X\n", hdr->crc);
-	printf("Check CRC       : %08X\n", calc);*/
+	printf("Check CRC       : %08X\n", calc);
 	
 	// CRC has to match
 	if (calc != hdr->crc) {
-		//printf("CRC check failed");
+		printf("CRC check failed");
 		return false;
 	}
 	
-	//printf("CRC check ok");
+	printf("CRC check ok");
 	return true;
 
 	// Stack pointer needs to be in RAM
 	if (vtor[0] < SRAM_BASE) {
-		//printf("reset vector check failed 1");
+		printf("reset vector check failed 1");
 		return false;
 	}
 	
-	//printf("reset vector in RAM");
+	printf("reset vector in RAM");
 	return false;
 
 	// Reset vector should be in the image, and thumb (bit 0 set)
 	if ((vtor[1] < hdr->vtor) || (vtor[1] > hdr->vtor + hdr->size) || !(vtor[1] & 1)) {
-		//printf("reset vector check failed 2");
+		printf("reset vector check failed 2");
 		return false;
 	}
 	
-	//printf("reset vector in IMAGE");
+	printf("reset vector in IMAGE");
 	
 	//return false;
 
@@ -503,17 +503,20 @@ static bool image_header_ok(struct image_header *hdr)
 static uint32_t handle_seal(uint32_t *args_in, uint8_t *data_in, uint32_t *resp_args_out, uint8_t *resp_data_out)
 {
 	struct image_header hdr = {
-		.vtor = args_in[0],
-		.size = args_in[1],
-		.crc = args_in[2],
+		.addr = args_in[0],
+		.vtor = args_in[1],
+		.size = args_in[2],
+		.crc = args_in[3],
 	};
 
 	if ((hdr.vtor & 0xff) || (hdr.size & 0x3)) {
 		// Must be aligned
+		printf("!!! Must be aligned");
 		return RSP_ERR;
 	}
 
 	if (!image_header_ok(&hdr)) {
+		printf("!!! Image header not OK");
 		return RSP_ERR;
 	}
 
@@ -522,6 +525,7 @@ static uint32_t handle_seal(uint32_t *args_in, uint8_t *data_in, uint32_t *resp_
 
 	struct image_header *check = (struct image_header *)(XIP_BASE + IMAGE_HEADER_OFFSET);
 	if (memcmp(&hdr, check, sizeof(hdr))) {
+		printf("!!! Flash write failed");
 		return RSP_ERR;
 	}
 
@@ -658,6 +662,7 @@ static enum state state_read_args(struct cmd_context *ctx)
 	if (!desc) {
 		// TODO: Error handler that can do args?
 		ctx->status = RSP_ERR;
+		printf("!! Invalid CMD %08X\n", ctx->opcode);
 		return STATE_ERROR;
 	}
 
@@ -679,6 +684,7 @@ static enum state state_read_data(struct cmd_context *ctx)
 	if (desc->size) {
 		ctx->status = desc->size(ctx->args, &ctx->data_len, &ctx->resp_data_len);
 		if (is_error(ctx->status)) {
+			printf("!! Data read error\n");
 			return STATE_ERROR;
 		}
 	} else {
@@ -700,6 +706,7 @@ static enum state state_handle_data(struct cmd_context *ctx)
 	if (desc->handle) {
 		ctx->status = desc->handle(ctx->args, ctx->data, ctx->resp_args, ctx->resp_data);
 		if (is_error(ctx->status)) {
+			printf("!! Data handle error\n");
 			return STATE_ERROR;
 		}
 	} else {
@@ -770,10 +777,8 @@ int main(void)
 	printf("~~~ BOOTLOADER: VERIFY IMAGE HEADER\n");
 	printf("Result: %d\n", image_header_ok(hdr));
 	i2c_bl_set_state(0xA1);
-	sleep_ms(2000);
-	printf("Would have jumped to %08X\n", XIP_BASE + IMAGE_HEADER_OFFSET);
+	printf("Image header offset %08X\n", XIP_BASE + IMAGE_HEADER_OFFSET);
 	i2c_bl_set_state(0xA2);
-	sleep_ms(2000);
 	printf("Starting UART download protocol...\n");
 
 	while (1) {
