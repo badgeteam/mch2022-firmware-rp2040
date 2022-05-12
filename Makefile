@@ -1,4 +1,4 @@
-# Copyright (c) 2022 Renze Nicolai
+# Copyright (c) 2022 Nicolai Electronics
 # Copyright (c) 2022 Jana Marie Hemsing
 # SPDX-License-Identifier: MIT
 
