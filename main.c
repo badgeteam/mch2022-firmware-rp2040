@@ -16,6 +16,7 @@
 #include "tusb.h"
 #include "usb_descriptors.h"
 #include "uart_task.h"
+#include "webusb_task.h"
 #include "hardware.h"
 #include "lcd.h"
 #include "hardware/adc.h"
@@ -49,11 +50,7 @@ int main(void) {
         tud_task(); // tinyusb device task
         cdc_task();
         i2c_task();
-        
-        /*if (board_button_read()) {
-            printf("Reset to USB bootloader...\r\n");
-            reset_usb_boot(0, 0);
-        }*/
+        webusb_task();
     }
 
     return 0;
