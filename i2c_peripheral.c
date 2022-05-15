@@ -11,11 +11,13 @@
 #include <pico/stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include "pico/unique_id.h"
 #include "bsp/board.h"
 #include "hardware/structs/watchdog.h"
 #include "hardware/watchdog.h"
 #include "i2c_peripheral.h"
 #include "lcd.h"
+#include "hardware.h"
 
 static bool interruptTarget = false;
 static bool interruptState = false;
@@ -24,6 +26,37 @@ static bool interruptCleared = false;
 static bool usb_mounted = false;
 static bool usb_suspended = false;
 static bool usb_rempote_wakeup_en = false;
+
+struct {
+    uint8_t registers[256];
+    bool modified[256];
+    uint8_t address;
+    bool transfer_in_progress;
+} i2c_registers;
+
+uint8_t i2c_controlled_gpios[] = {SAO_IO0_PIN, SAO_IO1_PIN, PROTO_0_PIN, PROTO_1_PIN};
+uint8_t input1_gpios[] = {BUTTON_HOME,  BUTTON_MENU,  BUTTON_START, BUTTON_ACCEPT, BUTTON_BACK, FPGA_CDONE}; //BATT_CHRG_PIN // Leave one bit empty, used for select pin!
+uint8_t input2_gpios[] = {BUTTON_JOY_A, BUTTON_JOY_B, BUTTON_JOY_C, BUTTON_JOY_D,  BUTTON_JOY_E};
+
+const bool i2c_registers_read_only[256] = {
+     true, false,  true, false, false, false,  true,  true, // 0-7
+     true,  true, false,  true,  true,  true,  true,  true, // 8-15
+    false, false, false, false, false, false, false, false, // 16-23
+     true,  true,  true,  true,  true,  true,  true,  true, // 24-31
+    false, false, false, false, false, false, false, false, // 32-39
+    false, false, false, false, false, false, false, false, // 40-47
+    false, false, false, false, false, false, false, false, // 48-55
+    false, false, false, false, false, false, false, false, // 56-63
+    false, false, false, false, false, false, false, false, // 64-71
+    false, false, false, false, false, false, false, false, // 72-79
+    false, false, false, false, false, false, false, false, // 80-87
+    false, false, false, false, false, false, false, false, // 88-95
+    false, false, false, false, false, false, false, false, // 96-103
+    false, false, false, false, false, false, false, false, // 104-111
+    false, false, false, false, false, false, false, false, // 112-119
+    false, false, false, false, false, false, false, false, // 120-127
+    // ... (128-255)
+};
 
 void setup_i2c_peripheral(i2c_inst_t *i2c, uint8_t sda_pin, uint8_t scl_pin, uint8_t address, uint32_t baudrate, i2c_slave_handler_t handler) {
     gpio_init(sda_pin);
@@ -38,36 +71,16 @@ void setup_i2c_peripheral(i2c_inst_t *i2c, uint8_t sda_pin, uint8_t scl_pin, uin
     i2c_slave_init(i2c, address, handler);
 }
 
-/* MCH2022 I2C peripheral */
-
-#include "hardware.h"
-
-struct {
-    uint8_t registers[256];
-    bool modified[256];
-    bool read_only[256];
-    uint8_t address;
-    bool transfer_in_progress;
-} i2c_registers;
-
-uint8_t i2c_controlled_gpios[] = {SAO_IO0_PIN, SAO_IO1_PIN, PROTO_0_PIN, PROTO_1_PIN};
-uint8_t input1_gpios[] = {BUTTON_HOME,  BUTTON_MENU,  BUTTON_START, BUTTON_ACCEPT, BUTTON_BACK, FPGA_CDONE}; //BATT_CHRG_PIN // Leave one bit empty, used for select pin!
-uint8_t input2_gpios[] = {BUTTON_JOY_A, BUTTON_JOY_B, BUTTON_JOY_C, BUTTON_JOY_D,  BUTTON_JOY_E};
-
 void setup_i2c_registers() {
     for (uint16_t reg = 0; reg < 256; reg++) {
         i2c_registers.registers[reg] = 0;
         i2c_registers.modified[reg] = false;
-        i2c_registers.read_only[reg] = false;
     }
 
     i2c_registers.registers[I2C_REGISTER_FW_VER] = 0x01;
-    i2c_registers.read_only[I2C_REGISTER_FW_VER] = true;
-    i2c_registers.read_only[I2C_REGISTER_GPIO_IN] = true;
-    i2c_registers.read_only[I2C_REGISTER_INPUT1] = true;
-    i2c_registers.read_only[I2C_REGISTER_INPUT2] = true;
-    i2c_registers.read_only[I2C_REGISTER_INTERRUPT1] = true;
-    i2c_registers.read_only[I2C_REGISTER_INTERRUPT2] = true;
+
+    pico_unique_board_id_t id;
+    pico_get_unique_board_id((pico_unique_board_id_t*) &i2c_registers.registers[I2C_REGISTER_UID0]);
     
     for (uint8_t index = 0; index < sizeof(i2c_controlled_gpios); index++) {
         gpio_init(i2c_controlled_gpios[index]);
@@ -113,7 +126,7 @@ void i2c_slave_handler(i2c_inst_t *i2c, i2c_slave_event_t event) {
                 i2c_registers.address = i2c_read_byte(i2c);
                 i2c_registers.transfer_in_progress = true;
             } else {
-                if (!i2c_registers.read_only[i2c_registers.address]) {
+                if (!i2c_registers_read_only[i2c_registers.address]) {
                     i2c_registers.registers[i2c_registers.address] = i2c_read_byte(i2c);
                     i2c_registers.modified[i2c_registers.address] = true;
                 }
