@@ -31,7 +31,7 @@ struct {
     uint8_t registers[256];
     bool modified[256];
     uint8_t address;
-    bool transfer_in_progress;
+    bool write_in_progress;
 } i2c_registers;
 
 uint8_t i2c_controlled_gpios[] = {SAO_IO0_PIN, SAO_IO1_PIN, PROTO_0_PIN, PROTO_1_PIN};
@@ -111,6 +111,10 @@ void setup_i2c_registers() {
     
     gpio_init(ESP32_INT_PIN);
     gpio_set_dir(ESP32_INT_PIN, false);
+
+    gpio_set_dir(SAO_IO0_PIN, true); // Debug
+    gpio_set_dir(SAO_IO1_PIN, true); // Debug
+
 }
 
 void i2c_register_write(uint8_t reg, uint8_t value) {
@@ -122,9 +126,9 @@ void i2c_slave_handler(i2c_inst_t *i2c, i2c_slave_event_t event) {
     // In ISR context, don't block and quickly complete!
     switch (event) {
         case I2C_SLAVE_RECEIVE:
-            if (!i2c_registers.transfer_in_progress) {
+            if (!i2c_registers.write_in_progress) {
                 i2c_registers.address = i2c_read_byte(i2c);
-                i2c_registers.transfer_in_progress = true;
+                i2c_registers.write_in_progress = true;
             } else {
                 if (!i2c_registers_read_only[i2c_registers.address]) {
                     i2c_registers.registers[i2c_registers.address] = i2c_read_byte(i2c);
@@ -144,7 +148,7 @@ void i2c_slave_handler(i2c_inst_t *i2c, i2c_slave_event_t event) {
             i2c_registers.address++;
             break;
         case I2C_SLAVE_FINISH:
-            i2c_registers.transfer_in_progress = false;
+            i2c_registers.write_in_progress = false;
             break;
         default:
             break;
@@ -197,7 +201,10 @@ void i2c_handle_register_write(uint8_t reg, uint8_t value) {
 }
 
 void i2c_task() {
-    if (!i2c_registers.transfer_in_progress) {
+    gpio_put(SAO_IO0_PIN, i2c_registers.write_in_progress);
+    bool busy = i2c_slave_transfer_in_progress(I2C_SYSTEM);
+    gpio_put(SAO_IO1_PIN, busy);
+    if (!busy) {
         for (uint16_t reg = 0; reg < 256; reg++) {
             if (i2c_registers.modified[reg]) {
                 i2c_handle_register_write(reg, i2c_registers.registers[reg]);

@@ -39,10 +39,6 @@ static void __not_in_flash_func(i2c_slave_irq_handler)(i2c_slave_t *slave) {
         hw->clr_start_det;
         finish_transfer(slave);
     }
-    if (intr_stat & I2C_IC_INTR_STAT_R_STOP_DET_BITS) {
-        hw->clr_stop_det;
-        finish_transfer(slave);
-    }
     if (intr_stat & I2C_IC_INTR_STAT_R_RX_FULL_BITS) {
         slave->transfer_in_progress = true;
         slave->handler(i2c, I2C_SLAVE_RECEIVE);
@@ -51,6 +47,10 @@ static void __not_in_flash_func(i2c_slave_irq_handler)(i2c_slave_t *slave) {
         hw->clr_rd_req;
         slave->transfer_in_progress = true;
         slave->handler(i2c, I2C_SLAVE_REQUEST);
+    }
+    if (intr_stat & I2C_IC_INTR_STAT_R_STOP_DET_BITS) {
+        hw->clr_stop_det;
+        finish_transfer(slave);
     }
 }
 
@@ -104,4 +104,11 @@ void i2c_slave_deinit(i2c_inst_t *i2c) {
     hw->intr_mask = I2C_IC_INTR_MASK_RESET;
 
     i2c_set_slave_mode(i2c, false, 0);
+}
+
+bool i2c_slave_transfer_in_progress(i2c_inst_t *i2c) {
+    assert(i2c == i2c0 || i2c == i2c1);
+    uint i2c_index = i2c_hw_index(i2c);
+    i2c_slave_t *slave = &i2c_slaves[i2c_index];
+    return slave->transfer_in_progress;
 }
