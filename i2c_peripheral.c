@@ -118,7 +118,7 @@ void i2c_register_write(uint8_t reg, uint8_t value) {
     i2c_registers.modified[reg] = true;
 }
 
-void i2c_slave_handler(i2c_inst_t *i2c, i2c_slave_event_t event) {
+void __not_in_flash_func(i2c_slave_handler)(i2c_inst_t *i2c, i2c_slave_event_t event) {
     // In ISR context, don't block and quickly complete!
     switch (event) {
         case I2C_SLAVE_RECEIVE:
