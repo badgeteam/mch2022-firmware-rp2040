@@ -105,3 +105,10 @@ void i2c_slave_deinit(i2c_inst_t *i2c) {
 
     i2c_set_slave_mode(i2c, false, 0);
 }
+
+bool i2c_slave_transfer_in_progress(i2c_inst_t *i2c) {
+    assert(i2c == i2c0 || i2c == i2c1);
+    uint i2c_index = i2c_hw_index(i2c);
+    i2c_slave_t *slave = &i2c_slaves[i2c_index];
+    return slave->transfer_in_progress;
+}

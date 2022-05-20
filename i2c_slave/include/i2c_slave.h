@@ -58,6 +58,8 @@ void i2c_slave_init(i2c_inst_t *i2c, uint8_t address, i2c_slave_handler_t handle
  */
 void i2c_slave_deinit(i2c_inst_t *i2c);
 
+bool i2c_slave_transfer_in_progress(i2c_inst_t *i2c);
+
 #ifdef __cplusplus
 }
 #endif
