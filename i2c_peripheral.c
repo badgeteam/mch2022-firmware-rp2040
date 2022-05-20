@@ -197,7 +197,8 @@ void i2c_handle_register_write(uint8_t reg, uint8_t value) {
 }
 
 void i2c_task() {
-    if (!i2c_registers.transfer_in_progress) {
+    bool busy = i2c_slave_transfer_in_progress(I2C_SYSTEM);
+    if (!busy) {
         for (uint16_t reg = 0; reg < 256; reg++) {
             if (i2c_registers.modified[reg]) {
                 i2c_handle_register_write(reg, i2c_registers.registers[reg]);
