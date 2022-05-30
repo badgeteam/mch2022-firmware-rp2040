@@ -18,6 +18,7 @@
 #include "i2c_peripheral.h"
 #include "lcd.h"
 #include "hardware.h"
+#include "uart_task.h"
 
 static bool interruptTarget = false;
 static bool interruptState = false;
@@ -168,6 +169,7 @@ void i2c_handle_register_write(uint8_t reg, uint8_t value) {
             break;
         case I2C_REGISTER_FPGA:
             gpio_put(FPGA_RESET, (i2c_registers.registers[I2C_REGISTER_FPGA] & 0x01));
+            fpga_loopback((i2c_registers.registers[I2C_REGISTER_FPGA] & 0x02));
             break;
         case I2C_REGISTER_LCD_BACKLIGHT:
             lcd_backlight(value);

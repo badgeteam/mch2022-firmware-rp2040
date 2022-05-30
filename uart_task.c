@@ -24,6 +24,8 @@ static uint8_t esp32_reset_state = 0;
 static uint8_t esp32_reset_app_state = 0;
 static absolute_time_t esp32_reset_timeout = 0;
 
+static bool fpga_loopback_active = false;
+
 cdc_line_coding_t current_line_coding[2];
 cdc_line_coding_t requested_line_coding[2];
 
@@ -101,6 +103,13 @@ void on_fpga_uart_rx() {
     if (!ready) return;
     uint8_t buffer[64];
     uint32_t length = 0;
+    if (fpga_loopback_active) {
+        while (uart_is_readable(UART_FPGA)) {
+            uart_tx_wait_blocking(UART_FPGA);
+            uart_putc_raw(UART_FPGA, uart_getc(UART_FPGA) ^ 0xa5);
+	}
+        return;
+    }
     while (uart_is_readable(UART_FPGA)) {
         buffer[length] = uart_getc(UART_FPGA);
         length++;
@@ -245,6 +254,29 @@ void esp32_reset(bool download_mode) {
     esp32_reset_active = true;
     esp32_reset_timeout = delayed_by_ms(get_absolute_time(), 25);
     //printf("ESP32 reset to %s\r\n", download_mode ? "DL" : "APP");
+}
+
+void fpga_loopback(bool enable) {
+    if (enable) {
+        /* Enable loopback */
+        fpga_loopback_active = true;
+
+        /* Switch to 1 MBaud 8N1 */
+        uart_set_baudrate(UART_FPGA, 1000000);
+        uart_set_format(UART_FPGA, 8, 1, UART_PARITY_NONE);
+
+        /* Mark config */
+        current_line_coding[USB_CDC_FPGA].bit_rate  = 1000000;
+        current_line_coding[USB_CDC_FPGA].data_bits = 8;
+        current_line_coding[USB_CDC_FPGA].parity    = 0;
+        current_line_coding[USB_CDC_FPGA].stop_bits = 1;
+    } else {
+        /* Disable loopback */
+        fpga_loopback_active = false;
+
+        /* Restore baudrate */
+        apply_line_coding(USB_CDC_FPGA);
+    }
 }
 
 bool prev_dtr = false;
