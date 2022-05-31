@@ -264,17 +264,18 @@ void fpga_loopback(bool enable) {
         /* Switch to 1 MBaud 8N1 */
         uart_set_baudrate(UART_FPGA, 1000000);
         uart_set_format(UART_FPGA, 8, 1, UART_PARITY_NONE);
-
-        /* Mark config */
-        current_line_coding[USB_CDC_FPGA].bit_rate  = 1000000;
-        current_line_coding[USB_CDC_FPGA].data_bits = 8;
-        current_line_coding[USB_CDC_FPGA].parity    = 0;
-        current_line_coding[USB_CDC_FPGA].stop_bits = 1;
     } else {
         /* Disable loopback */
         fpga_loopback_active = false;
 
         /* Restore baudrate */
+		/* Set actual config so that apply_line_coding reconfigues it */
+        current_line_coding[USB_CDC_FPGA].bit_rate  = 1000000;
+        current_line_coding[USB_CDC_FPGA].data_bits = 8;
+        current_line_coding[USB_CDC_FPGA].parity    = 0;
+        current_line_coding[USB_CDC_FPGA].stop_bits = 1;
+
+		/* Reconfig */
         apply_line_coding(USB_CDC_FPGA);
     }
 }
