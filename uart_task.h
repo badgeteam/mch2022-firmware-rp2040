@@ -19,3 +19,6 @@ bool stdio_usb_init_cdc2();
 void esp32_reset(bool download_mode);
 void wake_up_esp32();
 void send_interrupt_to_esp32();
+
+// FPGA special functions
+void fpga_loopback(bool enable);
