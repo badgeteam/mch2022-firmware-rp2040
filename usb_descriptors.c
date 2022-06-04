@@ -101,17 +101,6 @@ uint8_t const * tud_descriptor_device_cb(void) {
 
 // Configuration Descriptor
 
-enum {
-  ITF_NUM_CDC_0,
-  ITF_NUM_CDC_0_DATA,
-  ITF_NUM_CDC_1,
-  ITF_NUM_CDC_1_DATA,
-  ITF_NUM_VENDOR_0,
-  ITF_NUM_VENDOR_1,
-  ITF_NUM_VENDOR_2,
-  ITF_NUM_TOTAL
-};
-
 #define CONFIG_TOTAL_LEN    (TUD_CONFIG_DESC_LEN + CFG_TUD_CDC * TUD_CDC_DESC_LEN + CFG_TUD_VENDOR * TUD_VENDOR_DESC_LEN)
 
 #define EPNUM_CDC_0_NOTIF  0x81 // Endpoint 1: CDC serial port for ESP32 console, control

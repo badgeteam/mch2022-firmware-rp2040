@@ -11,17 +11,23 @@
 #include "uart_task.h"
 #include "hardware.h"
 
-uint8_t webusb_status = 0x00;
+uint16_t webusb_status[CFG_TUD_VENDOR] = {0x0000};
 
 void webusb_task() {
     uint8_t buffer[64];
     for (uint8_t idx = 0; idx < CFG_TUD_VENDOR; idx++) {
         int available = tud_vendor_n_available(idx);
         if (available > 0) {
-            uint32_t read = tud_vendor_n_read(idx, buffer, sizeof(buffer));
-            tud_vendor_n_write(idx, buffer, read); // Loopback test
-            read = snprintf(buffer, sizeof(buffer), "Status: %02X (idx %u)\n", webusb_status, idx);
-            tud_vendor_n_write(idx, buffer, read);
+            uint32_t length = tud_vendor_n_read(idx, buffer, sizeof(buffer));
+            if (idx == WEBUSB_IDX_CONTROL) {
+                tud_vendor_n_write(idx, buffer, length); // Loopback
+                /*length = snprintf(buffer, sizeof(buffer), "Status: %04X (idx %u)\n", webusb_status[idx], idx);
+                tud_vendor_n_write(idx, buffer, length);*/
+            } else if (WEBUSB_IDX_ESP32) {
+                uart_write_blocking(UART_ESP32, buffer, length);
+            } else if (WEBUSB_IDX_FPGA) {
+                uart_write_blocking(UART_FPGA, buffer, length);
+            }
         }
     }
 }
@@ -35,8 +41,8 @@ tusb_desc_webusb_url_t desc_url = {
   .url             = WEBUSB_LANDING_PAGE_URL
 };
 
-bool get_webusb_connected() {
-    return webusb_status & 1;
+bool get_webusb_connected(uint8_t idx) {
+    return webusb_status[idx] & 1;
 }
 
 bool tud_vendor_control_xfer_cb(uint8_t rhport, uint8_t stage, tusb_control_request_t const * request) {
@@ -67,7 +73,15 @@ bool tud_vendor_control_xfer_cb(uint8_t rhport, uint8_t stage, tusb_control_requ
 
         case TUSB_REQ_TYPE_CLASS:
             if (request->bRequest == 0x22) {
-                webusb_status = request->wValue;
+                if (request->wIndex == ITF_NUM_VENDOR_0) {
+                    webusb_status[0] = request->wValue;
+                }
+                if (request->wIndex == ITF_NUM_VENDOR_1) {
+                    webusb_status[1] = request->wValue;
+                }
+                if (request->wIndex == ITF_NUM_VENDOR_2) {
+                    webusb_status[2] = request->wValue;
+                }
                 // response with status OK
                 return tud_control_status(rhport, request);
             }

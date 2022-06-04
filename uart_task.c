@@ -83,13 +83,13 @@ void on_esp32_uart_rx() {
         length++;
         if (length >= sizeof(buffer)) {
             cdc_send(0, buffer, length);
-            if (get_webusb_connected()) tud_vendor_n_write(WEBUSB_IDX_ESP32, buffer, length);
+            if (get_webusb_connected(WEBUSB_IDX_ESP32)) tud_vendor_n_write(WEBUSB_IDX_ESP32, buffer, length);
             length = 0;
         }
     }
     if (length > 0) {
         cdc_send(0, buffer, length);
-        if (get_webusb_connected()) tud_vendor_n_write(WEBUSB_IDX_ESP32, buffer, length);
+        if (get_webusb_connected(WEBUSB_IDX_ESP32)) tud_vendor_n_write(WEBUSB_IDX_ESP32, buffer, length);
         length = 0;
     }
 }
@@ -110,13 +110,13 @@ void on_fpga_uart_rx() {
         length++;
         if (length >= sizeof(buffer)) {
             cdc_send(1, buffer, length);
-            if (get_webusb_connected()) tud_vendor_n_write(WEBUSB_IDX_FPGA, buffer, length);
+            if (get_webusb_connected(WEBUSB_IDX_FPGA)) tud_vendor_n_write(WEBUSB_IDX_FPGA, buffer, length);
             length = 0;
         }
     }
     if (length > 0) {
         cdc_send(1, buffer, length);
-        if (get_webusb_connected()) tud_vendor_n_write(WEBUSB_IDX_FPGA, buffer, length);
+        if (get_webusb_connected(WEBUSB_IDX_FPGA)) tud_vendor_n_write(WEBUSB_IDX_FPGA, buffer, length);
         length = 0;
     }
 }
@@ -201,18 +201,20 @@ void cdc_task(void) {
     
     if (tud_cdc_n_available(USB_CDC_ESP32)) {
         uint32_t length = tud_cdc_n_read(USB_CDC_ESP32, buffer, sizeof(buffer));
-        for (uint32_t position = 0; position < length; position++) {
+        /*for (uint32_t position = 0; position < length; position++) {
             uart_tx_wait_blocking(UART_ESP32);
             uart_putc_raw(UART_ESP32, buffer[position]);
-        }
+        }*/
+        uart_write_blocking(UART_ESP32, buffer, length);
     }
 
     if (tud_cdc_n_available(USB_CDC_FPGA)) {
         uint32_t length = tud_cdc_n_read(USB_CDC_FPGA, buffer, sizeof(buffer));
-        for (uint32_t position = 0; position < length; position++) {
+        /*for (uint32_t position = 0; position < length; position++) {
             uart_tx_wait_blocking(UART_FPGA);
             uart_putc_raw(UART_FPGA, buffer[position]);
-        }
+        }*/
+        uart_write_blocking(UART_FPGA, buffer, length);
     }
 
     absolute_time_t now = get_absolute_time();
