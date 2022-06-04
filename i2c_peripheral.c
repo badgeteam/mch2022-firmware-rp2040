@@ -19,6 +19,8 @@
 #include "lcd.h"
 #include "hardware.h"
 #include "uart_task.h"
+#include "pico/time.h"
+#include "hardware/adc.h"
 
 static bool interruptTarget = false;
 static bool interruptState = false;
@@ -36,8 +38,11 @@ struct {
 } i2c_registers;
 
 uint8_t i2c_controlled_gpios[] = {SAO_IO0_PIN, SAO_IO1_PIN, PROTO_0_PIN, PROTO_1_PIN};
-uint8_t input1_gpios[] = {BUTTON_HOME,  BUTTON_MENU,  BUTTON_START, BUTTON_ACCEPT, BUTTON_BACK, FPGA_CDONE}; //BATT_CHRG_PIN // Leave one bit empty, used for select pin!
+uint8_t input1_gpios[] = {BUTTON_HOME,  BUTTON_MENU,  BUTTON_START, BUTTON_ACCEPT, BUTTON_BACK, FPGA_CDONE};
 uint8_t input2_gpios[] = {BUTTON_JOY_A, BUTTON_JOY_B, BUTTON_JOY_C, BUTTON_JOY_D,  BUTTON_JOY_E};
+
+static absolute_time_t next_adc_read;
+uint8_t next_adc_channel;
 
 const bool i2c_registers_read_only[256] = {
      true, false,  true, false, false, false,  true,  true, // 0-7
@@ -112,6 +117,12 @@ void setup_i2c_registers() {
     
     gpio_init(ESP32_INT_PIN);
     gpio_set_dir(ESP32_INT_PIN, false);
+    
+    gpio_init(BATT_CHRG_PIN);
+    gpio_set_dir(BATT_CHRG_PIN, false);
+    
+    next_adc_read = get_absolute_time();
+    next_adc_channel = 0;
 }
 
 void i2c_register_write(uint8_t reg, uint8_t value) {
@@ -247,6 +258,35 @@ void i2c_task() {
                 gpio_put(ESP32_INT_PIN, false);
             } else {
                 gpio_set_dir(ESP32_INT_PIN, false); // Input, pin has pull-up, idle state
+            }
+        }
+        
+        absolute_time_t now = get_absolute_time();
+        if (now > next_adc_read) { // Once every 250ms
+            next_adc_read = delayed_by_ms(now, 250);
+
+            i2c_registers.registers[I2C_REGISTER_CHARGING_STATE] = gpio_get(BATT_CHRG_PIN);
+            
+            switch (next_adc_channel) {
+                case 0:
+                    uint16_t* reg_vusb = (uint16_t*) &i2c_registers.registers[I2C_REGISTER_ADC_VALUE_VUSB_LO];
+                    adc_select_input(ANALOG_VUSB_ADC);
+                    *reg_vusb = adc_read();
+                    next_adc_channel = 1;
+                    break;
+                case 1:
+                    uint16_t* reg_vbat = (uint16_t*) &i2c_registers.registers[I2C_REGISTER_ADC_VALUE_VBAT_LO];
+                    adc_select_input(ANALOG_VBAT_ADC);
+                    *reg_vbat = adc_read();
+                    next_adc_channel = 2;
+                    break;
+                case 2:
+                default:
+                    uint16_t* reg_temp = (uint16_t*) &i2c_registers.registers[I2C_REGISTER_ADC_VALUE_TEMP_LO];
+                    adc_select_input(ANALOG_TEMP_ADC);
+                    *reg_temp = adc_read();
+                    next_adc_channel = 0;
+                    break;
             }
         }
     }

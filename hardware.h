@@ -46,6 +46,7 @@
 #define ANALOG_VUSB_ADC 2
 #define ANALOG_VBAT_PIN 29
 #define ANALOG_VBAT_ADC 3
+#define ANALOG_TEMP_ADC 4
 
 // System state GPIOs
 #define BATT_CHRG_PIN 23

@@ -47,13 +47,8 @@ int main(void) {
 
     while (1) {
         tud_task(); // tinyusb device task
-        cdc_task();
-        i2c_task();
-        
-        /*if (board_button_read()) {
-            printf("Reset to USB bootloader...\r\n");
-            reset_usb_boot(0, 0);
-        }*/
+        cdc_task(); // USB serial port task
+        i2c_task(); // I2C peripheral task
     }
 
     return 0;
