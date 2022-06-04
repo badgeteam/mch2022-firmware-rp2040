@@ -45,6 +45,10 @@ bool get_webusb_connected(uint8_t idx) {
     return webusb_status[idx] & 1;
 }
 
+uint16_t get_webusb_status(uint8_t idx) {
+    return webusb_status[idx];
+}
+
 bool tud_vendor_control_xfer_cb(uint8_t rhport, uint8_t stage, tusb_control_request_t const * request) {
     // nothing to with DATA & ACK stage
     if (stage != CONTROL_STAGE_SETUP) return true;
@@ -86,9 +90,11 @@ bool tud_vendor_control_xfer_cb(uint8_t rhport, uint8_t stage, tusb_control_requ
                 return tud_control_status(rhport, request);
             }
             if (request->bRequest == 0x23) {
-                //request->wValue;
-                // response with status OK
-                return tud_control_status(rhport, request);
+                if (request->wIndex == ITF_NUM_VENDOR_1) { // Only the ESP32 can be reset
+                    esp32_reset(request->wValue); // Value controls the mode: 1 for download mode, 0 for normal mode
+                    // response with status OK
+                    return tud_control_status(rhport, request);
+                }
             }
         break;
 

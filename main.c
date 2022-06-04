@@ -43,8 +43,7 @@ int main(void) {
     setup_i2c_registers();
     setup_i2c_peripheral(I2C_SYSTEM, I2C_SYSTEM_SDA_PIN, I2C_SYSTEM_SCL_PIN, 0x17, 400000, i2c_slave_handler);
     
-    esp32_reset(true); // Reset ESP32
-    esp32_reset(false); // Start ESP32
+    esp32_reset(false); // Reset ESP32 to normal mode
 
     while (1) {
         tud_task();
