@@ -16,6 +16,7 @@
 #include "tusb.h"
 #include "usb_descriptors.h"
 #include "uart_task.h"
+#include "webusb_task.h"
 #include "hardware.h"
 #include "lcd.h"
 #include "hardware/adc.h"
@@ -46,9 +47,10 @@ int main(void) {
     esp32_reset(false); // Start ESP32
 
     while (1) {
-        tud_task(); // tinyusb device task
-        cdc_task(); // USB serial port task
-        i2c_task(); // I2C peripheral task
+        tud_task();
+        cdc_task();
+        i2c_task();
+        webusb_task();
     }
 
     return 0;

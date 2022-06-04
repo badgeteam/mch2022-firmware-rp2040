@@ -17,6 +17,7 @@
 #include "tusb.h"
 #include "usb_descriptors.h"
 #include "uart_task.h"
+#include "webusb_task.h"
 #include "hardware.h"
 
 static bool esp32_reset_active = false;
@@ -73,11 +74,6 @@ void setup_uart() {
     ready = true;
 }
 
-/*void send_interrupt_to_esp32() {
-    esp32_reset_active = true;
-    esp32_reset_timeout = delayed_by_ms(get_absolute_time(), 5);
-}*/
-
 void on_esp32_uart_rx() {
     if (!ready) return;
     uint8_t buffer[64];
@@ -85,16 +81,15 @@ void on_esp32_uart_rx() {
     while (uart_is_readable(UART_ESP32)) {
         buffer[length] = uart_getc(UART_ESP32);
         length++;
-        /*printf("ESP32:");
-        for (uint8_t i = 0; i < length; i++) printf("%c", buffer[i]);
-        printf("\r\n");*/
         if (length >= sizeof(buffer)) {
             cdc_send(0, buffer, length);
+            if (get_webusb_connected()) tud_vendor_n_write(WEBUSB_IDX_ESP32, buffer, length);
             length = 0;
         }
     }
     if (length > 0) {
         cdc_send(0, buffer, length);
+        if (get_webusb_connected()) tud_vendor_n_write(WEBUSB_IDX_ESP32, buffer, length);
         length = 0;
     }
 }
@@ -115,11 +110,13 @@ void on_fpga_uart_rx() {
         length++;
         if (length >= sizeof(buffer)) {
             cdc_send(1, buffer, length);
+            if (get_webusb_connected()) tud_vendor_n_write(WEBUSB_IDX_FPGA, buffer, length);
             length = 0;
         }
     }
     if (length > 0) {
         cdc_send(1, buffer, length);
+        if (get_webusb_connected()) tud_vendor_n_write(WEBUSB_IDX_FPGA, buffer, length);
         length = 0;
     }
 }
@@ -176,7 +173,7 @@ void apply_line_coding(uint8_t itf) {
     bool changed = false;
     if (current_line_coding[itf].bit_rate != requested_line_coding[itf].bit_rate) {
         int actual_baudrate = uart_set_baudrate(uart, requested_line_coding[itf].bit_rate);
-        printf("UART %u baudrate changed from %d to %d\r\n", itf, current_line_coding[itf].bit_rate, actual_baudrate);
+        //printf("UART %u baudrate changed from %d to %d\r\n", itf, current_line_coding[itf].bit_rate, actual_baudrate);
         changed = true;
     }
     
@@ -188,7 +185,7 @@ void apply_line_coding(uint8_t itf) {
             calc_stop_bits(requested_line_coding[itf].stop_bits),
             calc_parity(requested_line_coding[itf].parity)
         );
-        printf("UART %u: %s parity, %d stop bits, %d data bits\r\n", itf, (requested_line_coding[itf].parity == 2) ? "even" : (requested_line_coding[itf].parity == 1) ? "odd" : "no", requested_line_coding[itf].stop_bits + 1, requested_line_coding[itf].data_bits);
+        //printf("UART %u: %s parity, %d stop bits, %d data bits\r\n", itf, (requested_line_coding[itf].parity == 2) ? "even" : (requested_line_coding[itf].parity == 1) ? "odd" : "no", requested_line_coding[itf].stop_bits + 1, requested_line_coding[itf].data_bits);
         changed = true;
     }
 
@@ -253,7 +250,7 @@ void esp32_reset(bool download_mode) {
     gpio_put(ESP32_EN_PIN, false);
     esp32_reset_active = true;
     esp32_reset_timeout = delayed_by_ms(get_absolute_time(), 25);
-    //printf("ESP32 reset to %s\r\n", download_mode ? "DL" : "APP");
+    gpio_put(FPGA_RESET, false); // Always disable the FPGA if the ESP32 gets reset
 }
 
 void fpga_loopback(bool enable) {

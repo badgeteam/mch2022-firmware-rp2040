@@ -60,6 +60,7 @@ add_executable(${NAME}
     main.c
     usb_descriptors.c
     uart_task.c
+    webusb_task.c
     lcd.c
     i2c_peripheral.c
 )
