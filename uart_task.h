@@ -22,3 +22,6 @@ void send_interrupt_to_esp32();
 
 // FPGA special functions
 void fpga_loopback(bool enable);
+
+// WebUSB baudrate control
+void webusb_set_uart_baudrate(uint8_t index, bool enable_override, uint32_t baudrate);

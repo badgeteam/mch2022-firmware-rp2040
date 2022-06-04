@@ -17,6 +17,8 @@ void i2c_register_write(uint8_t reg, uint8_t value);
 void i2c_usb_set_mounted(bool mounted);
 void i2c_usb_set_suspended(bool suspended, bool remote_wakeup_en);
 
+void i2c_set_webusb_mode(uint8_t mode);
+
 enum {
     // 0-7
     I2C_REGISTER_FW_VER,
@@ -40,7 +42,7 @@ enum {
 
     // 16-23
     I2C_REGISTER_BL_TRIGGER,
-    I2C_REGISTER_RESERVED0,
+    I2C_REGISTER_WEBUSB_MODE,
     I2C_REGISTER_RESERVED1,
     I2C_REGISTER_RESERVED2,
     I2C_REGISTER_RESERVED3,

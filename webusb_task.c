@@ -82,9 +82,16 @@ bool tud_vendor_control_xfer_cb(uint8_t rhport, uint8_t stage, tusb_control_requ
                 }
                 if (request->wIndex == ITF_NUM_VENDOR_1) {
                     webusb_status[1] = request->wValue;
+                    if (!get_webusb_connected(1)) {
+                        webusb_set_uart_baudrate(0, false, 0); // Restore control over ESP32 baudrate to CDC
+                    }
+                    i2c_set_webusb_mode(0x00); // Disable ESP32 WebUSB mode
                 }
                 if (request->wIndex == ITF_NUM_VENDOR_2) {
                     webusb_status[2] = request->wValue;
+                    if (!get_webusb_connected(2)) {
+                        webusb_set_uart_baudrate(1, false, 0); // Restore control over FPGA baudrate to CDC
+                    }
                 }
                 // response with status OK
                 return tud_control_status(rhport, request);
@@ -95,6 +102,38 @@ bool tud_vendor_control_xfer_cb(uint8_t rhport, uint8_t stage, tusb_control_requ
                     // response with status OK
                     return tud_control_status(rhport, request);
                 }
+            }
+            if (request->bRequest == 0x24) {
+                if (request->wIndex == ITF_NUM_VENDOR_0) {
+                    // No baudrate to set for control interface
+                }
+                if (request->wIndex == ITF_NUM_VENDOR_1) {
+                    if (get_webusb_connected(1)) {
+                        webusb_set_uart_baudrate(0, true, (request->wValue) * 100); // Enable baudrate override
+                    }
+                }
+                if (request->wIndex == ITF_NUM_VENDOR_2) {
+                    if (get_webusb_connected(2)) {
+                        webusb_set_uart_baudrate(1, true, (request->wValue) * 100); // Enable baudrate override
+                    }
+                }
+                // response with status OK
+                return tud_control_status(rhport, request);
+            }
+            if (request->bRequest == 0x25) {
+                if (request->wIndex == ITF_NUM_VENDOR_0) {
+                    // No baudrate to set for control interface
+                }
+                if (request->wIndex == ITF_NUM_VENDOR_1) {
+                    if (get_webusb_connected(1)) {
+                        i2c_set_webusb_mode(request->wValue & 0xFF); // Set ESP32 WebUSB mode
+                    }
+                }
+                if (request->wIndex == ITF_NUM_VENDOR_2) {
+                    // No WebUSB mode for FPGA interface
+                }
+                // response with status OK
+                return tud_control_status(rhport, request);
             }
         break;
 
@@ -110,3 +149,9 @@ bool tud_vendor_control_complete_cb(uint8_t rhport, tusb_control_request_t const
   (void) request;
   return true;
 }
+
+/*
+char buffer[64];
+snprintf(buffer, sizeof(buffer), "Hello world");
+tud_vendor_n_write(0, buffer, strlen(buffer));
+*/

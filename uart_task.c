@@ -19,6 +19,7 @@
 #include "uart_task.h"
 #include "webusb_task.h"
 #include "hardware.h"
+#include "i2c_peripheral.h"
 
 static bool esp32_reset_active = false;
 static uint8_t esp32_reset_state = 0;
@@ -31,6 +32,8 @@ cdc_line_coding_t current_line_coding[2];
 cdc_line_coding_t requested_line_coding[2];
 
 bool ready = false;
+
+bool config_override_active[2];
 
 void setup_uart() {
     gpio_init(ESP32_BL_PIN);
@@ -55,6 +58,7 @@ void setup_uart() {
     current_line_coding[0].parity = 0;
     current_line_coding[0].stop_bits = 1;
     memcpy(&requested_line_coding[0], &current_line_coding[0], sizeof(cdc_line_coding_t));
+    config_override_active[0] = false;
 
     uart_init(UART_FPGA, 115200);
     gpio_set_function(UART_FPGA_TX_PIN, GPIO_FUNC_UART);
@@ -70,6 +74,7 @@ void setup_uart() {
     current_line_coding[1].parity = 0;
     current_line_coding[1].stop_bits = 1;
     memcpy(&requested_line_coding[1], &current_line_coding[1], sizeof(cdc_line_coding_t));
+    config_override_active[1] = false;
     
     ready = true;
 }
@@ -162,36 +167,36 @@ uint calc_parity(uint requested) {
 
 void apply_line_coding(uint8_t itf) {  
     uart_inst_t* uart;
+    uint8_t index = 0;
     if (itf == USB_CDC_ESP32) {
         uart = UART_ESP32;
+        index = 0;
     } else  if (itf == USB_CDC_FPGA) {
         uart = UART_FPGA;
+        index = 1;
     } else {
         return;
     }
     
     bool changed = false;
-    if (current_line_coding[itf].bit_rate != requested_line_coding[itf].bit_rate) {
-        int actual_baudrate = uart_set_baudrate(uart, requested_line_coding[itf].bit_rate);
-        //printf("UART %u baudrate changed from %d to %d\r\n", itf, current_line_coding[itf].bit_rate, actual_baudrate);
-        changed = true;
-    }
     
-    if ((current_line_coding[itf].data_bits != requested_line_coding[itf].data_bits) ||
-        (current_line_coding[itf].stop_bits != requested_line_coding[itf].stop_bits) ||
-        (current_line_coding[itf].parity != requested_line_coding[itf].parity)) {
-        uart_set_format(uart, calc_data_bits(
-            requested_line_coding[itf].data_bits),
-            calc_stop_bits(requested_line_coding[itf].stop_bits),
-            calc_parity(requested_line_coding[itf].parity)
-        );
-        //printf("UART %u: %s parity, %d stop bits, %d data bits\r\n", itf, (requested_line_coding[itf].parity == 2) ? "even" : (requested_line_coding[itf].parity == 1) ? "odd" : "no", requested_line_coding[itf].stop_bits + 1, requested_line_coding[itf].data_bits);
-        changed = true;
+    if ((!config_override_active[index]) && (!((index == 1) && (fpga_loopback_active)))) { // If not in override mode and (in case of FPGA UART) not in fpga loopback mode
+        if (current_line_coding[itf].bit_rate != requested_line_coding[itf].bit_rate) {
+            int actual_baudrate = uart_set_baudrate(uart, requested_line_coding[itf].bit_rate);
+        }
+        
+        if ((current_line_coding[itf].data_bits != requested_line_coding[itf].data_bits) ||
+            (current_line_coding[itf].stop_bits != requested_line_coding[itf].stop_bits) ||
+            (current_line_coding[itf].parity != requested_line_coding[itf].parity)) {
+            uart_set_format(uart, calc_data_bits(
+                requested_line_coding[itf].data_bits),
+                calc_stop_bits(requested_line_coding[itf].stop_bits),
+                calc_parity(requested_line_coding[itf].parity)
+            );
+        }
     }
 
-    if (changed) {
-        memcpy(&current_line_coding[itf], &requested_line_coding[itf], sizeof(cdc_line_coding_t));
-    }
+    memcpy(&current_line_coding[itf], &requested_line_coding[itf], sizeof(cdc_line_coding_t));
 }
 
 void cdc_task(void) {
@@ -255,27 +260,35 @@ void esp32_reset(bool download_mode) {
     gpio_put(FPGA_RESET, false); // Always disable the FPGA if the ESP32 gets reset
 }
 
+
+void webusb_set_uart_baudrate(uint8_t index, bool enable_override, uint32_t baudrate) {
+    uart_inst_t* uarts[] = {UART_ESP32, UART_FPGA};
+    uint8_t usb_cdcs[] = {USB_CDC_ESP32, USB_CDC_FPGA};
+
+    if (index >= sizeof(uarts)) return; // Ignore invalid index
+    
+    if ((index == 1) && (fpga_loopback_active)) return; // Ignore FPGA baudrate change in FPGA loopback mode
+
+    if (enable_override) {
+        config_override_active[index] = true; // Ignore requests from the CDC interface
+        uart_set_baudrate(uarts[index], baudrate);
+        uart_set_format(uarts[index], 8, 1, UART_PARITY_NONE);
+    } else {
+        config_override_active[index] = false; // Accept requests from the CDC interface
+        apply_line_coding(usb_cdcs[index]); // Restore configuration
+    }
+}
+
 void fpga_loopback(bool enable) {
     if (enable) {
-        /* Enable loopback */
-        fpga_loopback_active = true;
+        fpga_loopback_active = true; // Enable loopback
 
-        /* Switch to 1 MBaud 8N1 */
+        // Switch to 1 MBaud 8N1
         uart_set_baudrate(UART_FPGA, 1000000);
         uart_set_format(UART_FPGA, 8, 1, UART_PARITY_NONE);
     } else {
-        /* Disable loopback */
-        fpga_loopback_active = false;
-
-        /* Restore baudrate */
-		/* Set actual config so that apply_line_coding reconfigues it */
-        current_line_coding[USB_CDC_FPGA].bit_rate  = 1000000;
-        current_line_coding[USB_CDC_FPGA].data_bits = 8;
-        current_line_coding[USB_CDC_FPGA].parity    = 0;
-        current_line_coding[USB_CDC_FPGA].stop_bits = 1;
-
-		/* Reconfig */
-        apply_line_coding(USB_CDC_FPGA);
+        fpga_loopback_active = false; // Disable loopback
+        apply_line_coding(USB_CDC_FPGA); // Restore configuration
     }
 }
 
