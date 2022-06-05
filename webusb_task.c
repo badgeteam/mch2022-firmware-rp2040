@@ -12,13 +12,69 @@
 #include "hardware.h"
 #include "i2c_peripheral.h"
 
+uint16_t prev_webusb_status[CFG_TUD_VENDOR] = {0x0000};
 uint16_t webusb_status[CFG_TUD_VENDOR] = {0x0000};
 
+#define WEBUSB_STATUS_BIT_CONNECTED 0x0001
+
+bool webusb_esp32_reset_requested = false;
+bool webusb_esp32_reset_mode = false;
+
+bool webusb_esp32_baudrate_override_requested = false;
+uint32_t webusb_esp32_baudrate_override_value = 0;
+bool webusb_fpga_baudrate_override_requested = false;
+uint32_t webusb_fpga_baudrate_override_value = 0;
+
+bool webusb_mode_change_requested = false;
+uint8_t webusb_mode_change_target = 0;
+
 void webusb_task() {
-    uint8_t buffer[64];
+    if (webusb_esp32_reset_requested) {
+        esp32_reset(webusb_esp32_reset_mode); // Value controls the mode: 1 for download mode, 0 for normal mode
+        webusb_esp32_reset_requested = false;
+    }
+    
+    if (webusb_esp32_baudrate_override_requested) {
+        if (get_webusb_connected(1)) {
+            webusb_set_uart_baudrate(0, true, webusb_esp32_baudrate_override_value); // Enable baudrate override
+        }
+        webusb_esp32_baudrate_override_requested = false;
+    }
+    if (webusb_fpga_baudrate_override_requested) {
+        if (get_webusb_connected(2)) {
+            webusb_set_uart_baudrate(1, true, webusb_fpga_baudrate_override_value); // Enable baudrate override
+        }
+        webusb_fpga_baudrate_override_requested = false;
+    }
+    
+    if (webusb_mode_change_requested) {
+        if (get_webusb_connected(1)) {
+            i2c_set_webusb_mode(webusb_mode_change_target); // Set ESP32 WebUSB mode
+        }
+        webusb_mode_change_requested = false;
+    }
+    
     for (uint8_t idx = 0; idx < CFG_TUD_VENDOR; idx++) {
+        // On status change
+        if (prev_webusb_status[idx] != webusb_status[idx]) { // Status changed
+            bool was_connected = (prev_webusb_status[idx] & WEBUSB_STATUS_BIT_CONNECTED);
+            bool is_connected = (webusb_status[idx] & WEBUSB_STATUS_BIT_CONNECTED);
+            if (was_connected && (!is_connected)) { // Interface was connected and is now disconnected
+                if (idx == 1) { // ESP32
+                    webusb_set_uart_baudrate(0, false, 0); // Restore control over ESP32 baudrate to CDC
+                    i2c_set_webusb_mode(0x00); // Disable ESP32 WebUSB mode
+                } else if (idx == 2) { // FPGA
+                     webusb_set_uart_baudrate(1, false, 0); // Restore control over FPGA baudrate to CDC
+                }
+            }
+            
+            prev_webusb_status[idx] = webusb_status[idx];
+        }
+
+        // Data transfer
         int available = tud_vendor_n_available(idx);
         if (available > 0) {
+            uint8_t buffer[64];
             uint32_t length = tud_vendor_n_read(idx, buffer, sizeof(buffer));
             if (idx == WEBUSB_IDX_CONTROL) {
                 tud_vendor_n_write(idx, buffer, length); // Loopback
@@ -43,7 +99,7 @@ tusb_desc_webusb_url_t desc_url = {
 };
 
 bool get_webusb_connected(uint8_t idx) {
-    return webusb_status[idx] & 1;
+    return webusb_status[idx] & WEBUSB_STATUS_BIT_CONNECTED;
 }
 
 uint16_t get_webusb_status(uint8_t idx) {
@@ -57,92 +113,65 @@ bool tud_vendor_control_xfer_cb(uint8_t rhport, uint8_t stage, tusb_control_requ
     switch (request->bmRequestType_bit.type) {
         case TUSB_REQ_TYPE_VENDOR:
             switch (request->bRequest) {
-            case VENDOR_REQUEST_WEBUSB:
-                // match vendor request in BOS descriptor
-                // Get landing page url
-                return tud_control_xfer(rhport, request, (void*)(uintptr_t) &desc_url, desc_url.bLength);
+                case VENDOR_REQUEST_WEBUSB:
+                    // match vendor request in BOS descriptor
+                    // Get landing page url
+                    return tud_control_xfer(rhport, request, (void*)(uintptr_t) &desc_url, desc_url.bLength);
 
-            case VENDOR_REQUEST_MICROSOFT:
-                if ( request->wIndex == 7 ) {
-                // Get Microsoft OS 2.0 compatible descriptor
-                uint16_t total_len;
-                memcpy(&total_len, desc_ms_os_20+8, 2);
-
-                return tud_control_xfer(rhport, request, (void*)(uintptr_t) desc_ms_os_20, total_len);
-                } else {
-                return false;
-                }
-            default: break;
+                case VENDOR_REQUEST_MICROSOFT:
+                    if ( request->wIndex == 7 ) {
+                        // Get Microsoft OS 2.0 compatible descriptor
+                        uint16_t total_len;
+                        memcpy(&total_len, desc_ms_os_20+8, 2);
+                        return tud_control_xfer(rhport, request, (void*)(uintptr_t) desc_ms_os_20, total_len);
+                    } else {
+                        return false;
+                    }
+                default:
+                    break;
             }
-        break;
+            break;
 
         case TUSB_REQ_TYPE_CLASS:
-            if (request->bRequest == 0x22) {
-                if (request->wIndex == ITF_NUM_VENDOR_0) {
-                    webusb_status[0] = request->wValue;
-                }
-                if (request->wIndex == ITF_NUM_VENDOR_1) {
-                    webusb_status[1] = request->wValue;
-                    if (!get_webusb_connected(1)) {
-                        webusb_set_uart_baudrate(0, false, 0); // Restore control over ESP32 baudrate to CDC
-                    }
-                    i2c_set_webusb_mode(0x00); // Disable ESP32 WebUSB mode
-                }
-                if (request->wIndex == ITF_NUM_VENDOR_2) {
-                    webusb_status[2] = request->wValue;
-                    if (!get_webusb_connected(2)) {
-                        webusb_set_uart_baudrate(1, false, 0); // Restore control over FPGA baudrate to CDC
-                    }
-                }
-                // response with status OK
+            if (request->bRequest == 0x22) { // Set status
+                if (request->wIndex == ITF_NUM_VENDOR_0) webusb_status[0] = request->wValue;
+                if (request->wIndex == ITF_NUM_VENDOR_1) webusb_status[1] = request->wValue;
+                if (request->wIndex == ITF_NUM_VENDOR_2) webusb_status[2] = request->wValue;
                 return tud_control_status(rhport, request);
             }
-            if (request->bRequest == 0x23) {
-                if (request->wIndex == ITF_NUM_VENDOR_1) { // Only the ESP32 can be reset
-                    esp32_reset(request->wValue); // Value controls the mode: 1 for download mode, 0 for normal mode
-                    // response with status OK
+            if (request->bRequest == 0x23) { // Reset
+                // Channel 0 and 2 are ignored, only the ESP32 can be reset
+                if (request->wIndex == ITF_NUM_VENDOR_1) {
+                    webusb_esp32_reset_requested = true;
+                    webusb_esp32_reset_mode = request->wValue;
                     return tud_control_status(rhport, request);
                 }
             }
-            if (request->bRequest == 0x24) {
-                if (request->wIndex == ITF_NUM_VENDOR_0) {
-                    // No baudrate to set for control interface
-                }
+            if (request->bRequest == 0x24) { // Set baudrate
+                // Channel 0 is ignored, only the ESP32 and FPGA channels are connected to an actual UART
                 if (request->wIndex == ITF_NUM_VENDOR_1) {
-                    if (get_webusb_connected(1)) {
-                        webusb_set_uart_baudrate(0, true, (request->wValue) * 100); // Enable baudrate override
-                    }
+                    webusb_esp32_baudrate_override_requested = true;
+                    webusb_esp32_baudrate_override_value = (request->wValue) * 100;
                 }
                 if (request->wIndex == ITF_NUM_VENDOR_2) {
-                    if (get_webusb_connected(2)) {
-                        webusb_set_uart_baudrate(1, true, (request->wValue) * 100); // Enable baudrate override
-                    }
+                    webusb_fpga_baudrate_override_requested = true;
+                    webusb_fpga_baudrate_override_value = (request->wValue) * 100;
                 }
-                // response with status OK
                 return tud_control_status(rhport, request);
             }
-            if (request->bRequest == 0x25) {
-                if (request->wIndex == ITF_NUM_VENDOR_0) {
-                    // No baudrate to set for control interface
-                }
+            if (request->bRequest == 0x25) { // Set mode
+                // Channel 0 and 2 are ignored, only the ESP32 can be switched to different modes
                 if (request->wIndex == ITF_NUM_VENDOR_1) {
-                    if (get_webusb_connected(1)) {
-                        i2c_set_webusb_mode(request->wValue & 0xFF); // Set ESP32 WebUSB mode
-                    }
+                    webusb_mode_change_requested = true;
+                    webusb_mode_change_target = request->wValue & 0xFF;
                 }
-                if (request->wIndex == ITF_NUM_VENDOR_2) {
-                    // No WebUSB mode for FPGA interface
-                }
-                // response with status OK
                 return tud_control_status(rhport, request);
             }
-        break;
-
-        default: break;
+            break;
+        default:
+            break;
     }
-
-    // stall unknown request
-    return false;
+    return false; // stall unknown request
 }
 
 bool tud_vendor_control_complete_cb(uint8_t rhport, tusb_control_request_t const * request) {
