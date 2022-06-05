@@ -8,6 +8,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "pico/stdlib.h"
+#include "pico/types.h"
 #include "bsp/board.h"
 #include "hardware/uart.h"
 #include "hardware/irq.h"
@@ -21,12 +22,15 @@
 #include "hardware.h"
 #include "i2c_peripheral.h"
 
-static bool esp32_reset_active = false;
-static uint8_t esp32_reset_state = 0;
-static uint8_t esp32_reset_app_state = 0;
-static absolute_time_t esp32_reset_timeout = 0;
-
-static bool fpga_loopback_active = false;
+bool esp32_reset_active = false;
+uint8_t esp32_reset_state = 0;
+uint8_t esp32_reset_app_state = 0;
+#ifdef NDEBUG
+absolute_time_t esp32_reset_timeout = 0;
+#else
+absolute_time_t esp32_reset_timeout = {._private_us_since_boot = 0};
+#endif
+bool fpga_loopback_active = false;
 
 cdc_line_coding_t current_line_coding[2];
 cdc_line_coding_t requested_line_coding[2];
@@ -223,7 +227,11 @@ void cdc_task(void) {
     }
 
     absolute_time_t now = get_absolute_time();
+    #ifdef NDEBUG
     if((esp32_reset_state || esp32_reset_active) && now > esp32_reset_timeout) {
+    #else
+    if((esp32_reset_state || esp32_reset_active) && now._private_us_since_boot > esp32_reset_timeout._private_us_since_boot) {
+    #endif
         if (esp32_reset_active) {
             gpio_put(ESP32_EN_PIN, true);
             esp32_reset_active = false;
