@@ -272,7 +272,11 @@ void i2c_task() {
         }
         
         absolute_time_t now = get_absolute_time();
+        #ifdef NDEBUG
         if (now > next_adc_read) { // Once every 250ms
+        #else
+        if (now._private_us_since_boot > next_adc_read._private_us_since_boot) { // Once every 250ms
+        #endif
             next_adc_read = delayed_by_ms(now, 250);
 
             i2c_registers.registers[I2C_REGISTER_CHARGING_STATE] = gpio_get(BATT_CHRG_PIN);
