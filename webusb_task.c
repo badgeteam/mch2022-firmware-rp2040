@@ -10,6 +10,7 @@
 #include "webusb_task.h"
 #include "uart_task.h"
 #include "hardware.h"
+#include "i2c_peripheral.h"
 
 uint16_t webusb_status[CFG_TUD_VENDOR] = {0x0000};
 

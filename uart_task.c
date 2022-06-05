@@ -229,12 +229,12 @@ void cdc_task(void) {
             esp32_reset_active = false;
             esp32_reset_state = 0xFF;
             esp32_reset_app_state = 0xFF;
-            esp32_reset_timeout = delayed_by_ms(get_absolute_time(), 50);
+            esp32_reset_timeout = delayed_by_ms(get_absolute_time(), 1);
         } else {
             esp32_reset_state = 0x00;
             esp32_reset_app_state = 0x00;
-            gpio_set_dir(ESP32_BL_PIN, false);
             gpio_put(ESP32_EN_PIN, true);
+            gpio_set_dir(ESP32_BL_PIN, false);
         }
     }
 }
@@ -249,15 +249,16 @@ void tud_cdc_line_coding_cb(uint8_t itf, cdc_line_coding_t const* new_line_codin
 }
 
 void esp32_reset(bool download_mode) {
+    gpio_put(FPGA_RESET, false); // Always disable the FPGA if the ESP32 gets reset
+    gpio_put(ESP32_EN_PIN, false);
+    sleep_ms(1);
     if (download_mode) {
         gpio_set_dir(ESP32_BL_PIN, true); // Output, RP2040 pulls low
     } else {
         gpio_set_dir(ESP32_BL_PIN, false); // Input, ext. pull-up high
     }
-    gpio_put(ESP32_EN_PIN, false);
     esp32_reset_active = true;
-    esp32_reset_timeout = delayed_by_ms(get_absolute_time(), 25);
-    gpio_put(FPGA_RESET, false); // Always disable the FPGA if the ESP32 gets reset
+    esp32_reset_timeout = delayed_by_ms(get_absolute_time(), 1);
 }
 
 
