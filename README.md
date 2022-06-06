@@ -15,6 +15,12 @@ which allows the ESP32 to read button states and control things like the FPGA co
  - [ ] Firmware cleanup
  - [ ] Testing
 
+## How to build
+1. [Set up the Pico SDK](https://datasheets.raspberrypi.com/pico/getting-started-with-pico.pdf#page=7) and try to [compile an example](https://datasheets.raspberrypi.com/pico/getting-started-with-pico.pdf#page=9) to check whether it's set up correctly
+2. Run `make build` to build the firmware, `make flash` to flash or `make` to build & flash
+
+If you're getting compilation errors, make sure you have the newest version of all toolchain components and run `make clean` before retrying.
+
 ## License information
 
 The included bootloader is based on [RP2040 serial bootloader](https://github.com/usedbytes/rp2040-serial-bootloader) by Brian Starkey, licensed under BSD-3-Clause license.
