@@ -18,7 +18,7 @@ build:
 	mkdir -p $(BUILD_DIR)
 	cd $(BUILD_DIR); cmake -DCMAKE_INSTALL_PREFIX=$INSTALL_PREFIX ..
 	$(MAKE) -C $(BUILD_DIR) --no-print-directory all
-	python genuf2.py $(BUILD_DIR)/$(BL_BIN) $(BUILD_DIR)/$(FW_BIN) $(BUILD_DIR)/$(CB_UF2)
+	python3 genuf2.py $(BUILD_DIR)/$(BL_BIN) $(BUILD_DIR)/$(FW_BIN) $(BUILD_DIR)/$(CB_UF2)
 	
 flash:
 	picotool load $(BUILD_DIR)/$(CB_UF2)
