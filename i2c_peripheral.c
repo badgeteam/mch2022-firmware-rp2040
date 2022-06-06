@@ -283,24 +283,30 @@ void i2c_task() {
             
             switch (next_adc_channel) {
                 case 0:
+                {
                     uint16_t* reg_vusb = (uint16_t*) &i2c_registers.registers[I2C_REGISTER_ADC_VALUE_VUSB_LO];
                     adc_select_input(ANALOG_VUSB_ADC);
                     *reg_vusb = adc_read();
                     next_adc_channel = 1;
                     break;
+                }
                 case 1:
+                {
                     uint16_t* reg_vbat = (uint16_t*) &i2c_registers.registers[I2C_REGISTER_ADC_VALUE_VBAT_LO];
                     adc_select_input(ANALOG_VBAT_ADC);
                     *reg_vbat = adc_read();
                     next_adc_channel = 2;
                     break;
+                }
                 case 2:
                 default:
+                {
                     uint16_t* reg_temp = (uint16_t*) &i2c_registers.registers[I2C_REGISTER_ADC_VALUE_TEMP_LO];
                     adc_select_input(ANALOG_TEMP_ADC);
                     *reg_temp = adc_read();
                     next_adc_channel = 0;
                     break;
+                }
             }
         }
     }
