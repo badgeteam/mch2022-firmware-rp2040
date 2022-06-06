@@ -16,6 +16,7 @@
 #include "tusb.h"
 #include "usb_descriptors.h"
 #include "uart_task.h"
+#include "webusb_task.h"
 #include "hardware.h"
 #include "lcd.h"
 #include "hardware/adc.h"
@@ -42,13 +43,13 @@ int main(void) {
     setup_i2c_registers();
     setup_i2c_peripheral(I2C_SYSTEM, I2C_SYSTEM_SDA_PIN, I2C_SYSTEM_SCL_PIN, 0x17, 400000, i2c_slave_handler);
     
-    esp32_reset(true); // Reset ESP32
-    esp32_reset(false); // Start ESP32
+    esp32_reset(false); // Reset ESP32 to normal mode
 
     while (1) {
-        tud_task(); // tinyusb device task
-        cdc_task(); // USB serial port task
-        i2c_task(); // I2C peripheral task
+        tud_task();
+        cdc_task();
+        i2c_task();
+        webusb_task();
     }
 
     return 0;
