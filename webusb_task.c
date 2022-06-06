@@ -14,6 +14,7 @@
 
 uint16_t prev_webusb_status[CFG_TUD_VENDOR] = {0x0000};
 uint16_t webusb_status[CFG_TUD_VENDOR] = {0x0000};
+bool webusb_status_changed[CFG_TUD_VENDOR] = {false};
 
 #define WEBUSB_STATUS_BIT_CONNECTED 0x0001
 
@@ -28,21 +29,38 @@ uint32_t webusb_fpga_baudrate_override_value = 0;
 bool webusb_mode_change_requested = false;
 uint8_t webusb_mode_change_target = 0;
 
+void webusb_debug(char* message) {
+    tud_vendor_n_write(0, message, strlen(message));
+}
+
 void webusb_task() {
+    char message[128];
     if (webusb_esp32_reset_requested) {
         esp32_reset(webusb_esp32_reset_mode); // Value controls the mode: 1 for download mode, 0 for normal mode
+        snprintf(message, sizeof(message), "ESP32 reset to %s mode requested\r\n", webusb_esp32_reset_mode ? "download" : "app");
+        webusb_debug(message);
         webusb_esp32_reset_requested = false;
     }
-    
+
     if (webusb_esp32_baudrate_override_requested) {
         if (get_webusb_connected(1)) {
-            webusb_set_uart_baudrate(0, true, webusb_esp32_baudrate_override_value); // Enable baudrate override
+            uint32_t result = webusb_set_uart_baudrate(0, true, webusb_esp32_baudrate_override_value); // Enable baudrate override
+            snprintf(message, sizeof(message), "ESP32 baudrate changed to %u (%u)\r\n", webusb_esp32_baudrate_override_value, result);
+            webusb_debug(message);
+        } else {
+            snprintf(message, sizeof(message), "ESP32 baudrate change to %u ignored\r\n", webusb_esp32_baudrate_override_value);
+            webusb_debug(message);
         }
         webusb_esp32_baudrate_override_requested = false;
     }
     if (webusb_fpga_baudrate_override_requested) {
         if (get_webusb_connected(2)) {
-            webusb_set_uart_baudrate(1, true, webusb_fpga_baudrate_override_value); // Enable baudrate override
+            uint32_t result = webusb_set_uart_baudrate(1, true, webusb_fpga_baudrate_override_value); // Enable baudrate override
+            snprintf(message, sizeof(message), "FPGA baudrate changed to %u (%u)\r\n", webusb_fpga_baudrate_override_value, result);
+            webusb_debug(message);
+        } else {
+            snprintf(message, sizeof(message), "FPGA baudrate change to %u ignored\r\n", webusb_fpga_baudrate_override_value);
+            webusb_debug(message);
         }
         webusb_fpga_baudrate_override_requested = false;
     }
@@ -50,25 +68,30 @@ void webusb_task() {
     if (webusb_mode_change_requested) {
         if (get_webusb_connected(1)) {
             i2c_set_webusb_mode(webusb_mode_change_target); // Set ESP32 WebUSB mode
+            snprintf(message, sizeof(message), "ESP32 mode changed to %02x\r\n", webusb_mode_change_target);
+            webusb_debug(message);
+        } else {
+            snprintf(message, sizeof(message), "ESP32 mode change to %02x ignored\r\n", webusb_mode_change_target);
+            webusb_debug(message);
         }
         webusb_mode_change_requested = false;
     }
     
     for (uint8_t idx = 0; idx < CFG_TUD_VENDOR; idx++) {
         // On status change
-        if (prev_webusb_status[idx] != webusb_status[idx]) { // Status changed
-            bool was_connected = (prev_webusb_status[idx] & WEBUSB_STATUS_BIT_CONNECTED);
-            bool is_connected = (webusb_status[idx] & WEBUSB_STATUS_BIT_CONNECTED);
-            if (was_connected && (!is_connected)) { // Interface was connected and is now disconnected
+        if (webusb_status_changed[idx]) {
+            if (!get_webusb_connected(idx)) {
                 if (idx == 1) { // ESP32
-                    webusb_set_uart_baudrate(0, false, 0); // Restore control over ESP32 baudrate to CDC
+                    uint32_t result = webusb_set_uart_baudrate(0, false, 0); // Restore control over ESP32 baudrate to CDC
                     i2c_set_webusb_mode(0x00); // Disable ESP32 WebUSB mode
+                    snprintf(message, sizeof(message), "WebUSB disconnected from ESP32 channel (%u)\r\n", result);
+                    webusb_debug(message);
                 } else if (idx == 2) { // FPGA
-                     webusb_set_uart_baudrate(1, false, 0); // Restore control over FPGA baudrate to CDC
+                    uint32_t result = webusb_set_uart_baudrate(1, false, 0); // Restore control over FPGA baudrate to CDC
+                    snprintf(message, sizeof(message), "WebUSB disconnected from FPGA channel (%u)\r\n", result);
+                    webusb_debug(message);
                 }
             }
-            
-            prev_webusb_status[idx] = webusb_status[idx];
         }
 
         // Data transfer
@@ -77,7 +100,7 @@ void webusb_task() {
             uint8_t buffer[64];
             uint32_t length = tud_vendor_n_read(idx, buffer, sizeof(buffer));
             if (idx == WEBUSB_IDX_CONTROL) {
-                tud_vendor_n_write(idx, buffer, length); // Loopback
+                //tud_vendor_n_write(idx, buffer, length); // Loopback
                 /*length = snprintf(buffer, sizeof(buffer), "Status: %04X (idx %u)\n", webusb_status[idx], idx);
                 tud_vendor_n_write(idx, buffer, length);*/
             } else if (WEBUSB_IDX_ESP32) {
@@ -132,11 +155,20 @@ bool tud_vendor_control_xfer_cb(uint8_t rhport, uint8_t stage, tusb_control_requ
             }
             break;
 
-        case TUSB_REQ_TYPE_CLASS:
+        case TUSB_REQ_TYPE_CLASS: {
             if (request->bRequest == 0x22) { // Set status
-                if (request->wIndex == ITF_NUM_VENDOR_0) webusb_status[0] = request->wValue;
-                if (request->wIndex == ITF_NUM_VENDOR_1) webusb_status[1] = request->wValue;
-                if (request->wIndex == ITF_NUM_VENDOR_2) webusb_status[2] = request->wValue;
+                if (request->wIndex == ITF_NUM_VENDOR_0) {
+                    webusb_status[0] = request->wValue;
+                    webusb_status_changed[0] = true;
+                }
+                if (request->wIndex == ITF_NUM_VENDOR_1) {
+                    webusb_status[1] = request->wValue;
+                    webusb_status_changed[1] = true;
+                }
+                if (request->wIndex == ITF_NUM_VENDOR_2) {
+                    webusb_status[2] = request->wValue;
+                    webusb_status_changed[2] = true;
+                }
                 return tud_control_status(rhport, request);
             }
             if (request->bRequest == 0x23) { // Reset
@@ -168,6 +200,7 @@ bool tud_vendor_control_xfer_cb(uint8_t rhport, uint8_t stage, tusb_control_requ
                 return tud_control_status(rhport, request);
             }
             break;
+        }
         default:
             break;
     }
@@ -179,9 +212,3 @@ bool tud_vendor_control_complete_cb(uint8_t rhport, tusb_control_request_t const
   (void) request;
   return true;
 }
-
-/*
-char buffer[64];
-snprintf(buffer, sizeof(buffer), "Hello world");
-tud_vendor_n_write(0, buffer, strlen(buffer));
-*/

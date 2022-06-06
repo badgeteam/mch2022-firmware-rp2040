@@ -270,21 +270,25 @@ void esp32_reset(bool download_mode) {
 }
 
 
-void webusb_set_uart_baudrate(uint8_t index, bool enable_override, uint32_t baudrate) {
+uint32_t webusb_set_uart_baudrate(uint8_t index, bool enable_override, uint32_t baudrate) {
     uart_inst_t* uarts[] = {UART_ESP32, UART_FPGA};
     uint8_t usb_cdcs[] = {USB_CDC_ESP32, USB_CDC_FPGA};
 
-    if (index >= sizeof(uarts)) return; // Ignore invalid index
+    if (index >= sizeof(uarts)) return 1; // Ignore invalid index
     
-    if ((index == 1) && (fpga_loopback_active)) return; // Ignore FPGA baudrate change in FPGA loopback mode
+    if ((index == 1) && (fpga_loopback_active)) return 2; // Ignore FPGA baudrate change in FPGA loopback mode
 
     if (enable_override) {
         config_override_active[index] = true; // Ignore requests from the CDC interface
-        uart_set_baudrate(uarts[index], baudrate);
+        uint32_t real_baudrate = uart_set_baudrate(uarts[index], baudrate);
         uart_set_format(uarts[index], 8, 1, UART_PARITY_NONE);
-    } else {
+        return real_baudrate;
+    } else if (config_override_active[index]) {
         config_override_active[index] = false; // Accept requests from the CDC interface
         apply_line_coding(usb_cdcs[index]); // Restore configuration
+        return 3;
+    } else {
+        return 4;
     }
 }
 
