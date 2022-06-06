@@ -15,4 +15,15 @@ enum
   VENDOR_REQUEST_MICROSOFT = 2
 };
 
+enum {
+  ITF_NUM_CDC_0,
+  ITF_NUM_CDC_0_DATA,
+  ITF_NUM_CDC_1,
+  ITF_NUM_CDC_1_DATA,
+  ITF_NUM_VENDOR_0,
+  ITF_NUM_VENDOR_1,
+  ITF_NUM_VENDOR_2,
+  ITF_NUM_TOTAL
+};
+
 extern uint8_t const desc_ms_os_20[];

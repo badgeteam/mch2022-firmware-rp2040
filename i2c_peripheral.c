@@ -22,13 +22,16 @@
 #include "pico/time.h"
 #include "hardware/adc.h"
 
-static bool interruptTarget = false;
-static bool interruptState = false;
+static bool interrupt_target = false;
+static bool interrupt_state = false;
 static bool interruptCleared = false;
 
 static bool usb_mounted = false;
 static bool usb_suspended = false;
 static bool usb_rempote_wakeup_en = false;
+
+static uint8_t webusb_mode = 0;
+static bool webusb_interrupt = false;
 
 struct {
     uint8_t registers[256];
@@ -83,7 +86,7 @@ void setup_i2c_registers() {
         i2c_registers.modified[reg] = false;
     }
 
-    i2c_registers.registers[I2C_REGISTER_FW_VER] = 0x02;
+    i2c_registers.registers[I2C_REGISTER_FW_VER] = 0x03;
 
     pico_unique_board_id_t id;
     pico_get_unique_board_id((pico_unique_board_id_t*) &i2c_registers.registers[I2C_REGISTER_UID0]);
@@ -149,7 +152,7 @@ void __not_in_flash_func(i2c_slave_handler)(i2c_inst_t *i2c, i2c_slave_event_t e
             i2c_registers.write_in_progress = false;
             i2c_write_byte(i2c, i2c_registers.registers[i2c_registers.address]);
             if (i2c_registers.address == I2C_REGISTER_INTERRUPT2) {
-                interruptTarget = false;
+                interrupt_target = false;
                 interruptCleared = true;
                 i2c_registers.registers[I2C_REGISTER_INTERRUPT1] = 0;
                 i2c_registers.registers[I2C_REGISTER_INTERRUPT2] = 0;
@@ -222,6 +225,13 @@ void i2c_task() {
         
         // Set USB state register
         i2c_registers.registers[I2C_REGISTER_USB] = (usb_mounted&1) | ((usb_suspended&1) << 1) | ((usb_rempote_wakeup_en&1) << 2);
+        
+        // Set WebUSB mode register
+        i2c_registers.registers[I2C_REGISTER_WEBUSB_MODE] = webusb_mode;
+        if (webusb_interrupt) {
+            webusb_interrupt = false;
+            interrupt_target = true;
+        }
 
         // Read GPIO pins
         uint8_t gpio_in_value = 0;
@@ -235,7 +245,7 @@ void i2c_task() {
             input1_value |= (!gpio_get(input1_gpios[index])) << index;
         }
         input1_value |= board_button_read() << 7; // Select button
-        if (input1_value != i2c_registers.registers[I2C_REGISTER_INPUT1]) interruptTarget = true;
+        if (input1_value != i2c_registers.registers[I2C_REGISTER_INPUT1]) interrupt_target = true;
         i2c_registers.registers[I2C_REGISTER_INTERRUPT1] |= (input1_value ^ i2c_registers.registers[I2C_REGISTER_INPUT1]);
         i2c_registers.registers[I2C_REGISTER_INPUT1] = input1_value;
 
@@ -243,17 +253,17 @@ void i2c_task() {
         for (uint8_t index = 0; index < sizeof(input2_gpios); index++) {
             input2_value |= (!gpio_get(input2_gpios[index])) << index;
         }
-        if (input2_value != i2c_registers.registers[I2C_REGISTER_INPUT2]) interruptTarget = true;
+        if (input2_value != i2c_registers.registers[I2C_REGISTER_INPUT2]) interrupt_target = true;
         i2c_registers.registers[I2C_REGISTER_INTERRUPT2] |= (input2_value ^ i2c_registers.registers[I2C_REGISTER_INPUT2]);
         i2c_registers.registers[I2C_REGISTER_INPUT2] = input2_value;
 
         if (interruptCleared) {
             gpio_set_dir(ESP32_INT_PIN, false); // Input, pin has pull-up, idle state
-            interruptState = !interruptTarget;
+            interrupt_state = !interrupt_target;
             interruptCleared = false;
-        } else if (interruptTarget != interruptState) {
-            interruptState = interruptTarget;
-            if (interruptTarget) {
+        } else if (interrupt_target != interrupt_state) {
+            interrupt_state = interrupt_target;
+            if (interrupt_target) {
                 gpio_set_dir(ESP32_INT_PIN, true); // Output, low, trigger interrupt on ESP32
                 gpio_put(ESP32_INT_PIN, false);
             } else {
@@ -262,7 +272,11 @@ void i2c_task() {
         }
         
         absolute_time_t now = get_absolute_time();
+        #ifdef NDEBUG
         if (now > next_adc_read) { // Once every 250ms
+        #else
+        if (now._private_us_since_boot > next_adc_read._private_us_since_boot) { // Once every 250ms
+        #endif
             next_adc_read = delayed_by_ms(now, 250);
 
             i2c_registers.registers[I2C_REGISTER_CHARGING_STATE] = gpio_get(BATT_CHRG_PIN);
@@ -299,4 +313,9 @@ void i2c_usb_set_mounted(bool mounted) {
 void i2c_usb_set_suspended(bool suspended, bool remote_wakeup_en) {
     usb_suspended = suspended;
     usb_rempote_wakeup_en = remote_wakeup_en;
+}
+
+void i2c_set_webusb_mode(uint8_t mode) {
+    webusb_mode = mode;
+    //webusb_interrupt = true;
 }

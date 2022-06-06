@@ -1,9 +1,10 @@
 cmake_minimum_required(VERSION 3.12)
 
+message("Build type: \"${CMAKE_BUILD_TYPE}\"")
+
 # Project name
 set(NAME mch2022_firmware)
 set(BOOTLOADER mch2022_bootloader)
-set(COMBINED mch2022_combined)
 
 # Board type
 set(PICO_BOARD none)
@@ -25,41 +26,46 @@ add_subdirectory(i2c_slave)
 
 # Bootloader
 
-add_executable(${BOOTLOADER} bootloader/main.c bootloader/i2c_peripheral.c)
+if (CMAKE_BUILD_TYPE STREQUAL "Debug")
+    message("Building in debug mode, NOT building bootloader")
+else ()
+    add_executable(${BOOTLOADER} bootloader/main.c bootloader/i2c_peripheral.c)
 
-function(target_cl_options option)
-    target_compile_options(${BOOTLOADER} PRIVATE ${option})
-    target_link_options(${BOOTLOADER} PRIVATE ${option})
-endfunction()
+    function(target_cl_options option)
+        target_compile_options(${BOOTLOADER} PRIVATE ${option})
+        target_link_options(${BOOTLOADER} PRIVATE ${option})
+    endfunction()
 
-target_cl_options("-Os")
-target_cl_options("-ffunction-sections")
-target_cl_options("-fdata-sections")
-target_link_options(${BOOTLOADER} PRIVATE "LINKER:--gc-sections")
+    target_cl_options("-Os")
+    target_cl_options("-ffunction-sections")
+    target_cl_options("-fdata-sections")
+    target_link_options(${BOOTLOADER} PRIVATE "LINKER:--gc-sections")
 
-pico_add_extra_outputs(${BOOTLOADER})
-pico_set_binary_type(${BOOTLOADER} copy_to_ram)
+    pico_add_extra_outputs(${BOOTLOADER})
+    pico_set_binary_type(${BOOTLOADER} copy_to_ram)
 
-set_target_properties(${BOOTLOADER} PROPERTIES COMPILE_FLAGS "-Wall")
+    set_target_properties(${BOOTLOADER} PROPERTIES COMPILE_FLAGS "-Wall")
 
-pico_set_linker_script(${BOOTLOADER} ${CMAKE_CURRENT_SOURCE_DIR}/bootloader/bootloader.ld)
+    pico_set_linker_script(${BOOTLOADER} ${CMAKE_CURRENT_SOURCE_DIR}/bootloader/bootloader.ld)
 
-target_link_libraries(${BOOTLOADER}
-                      pico_stdlib
-                      hardware_dma
-                      hardware_flash
-                      hardware_structs
-                      hardware_resets
-                      i2c_slave
-                      cmsis_core)
+    target_link_libraries(${BOOTLOADER}
+                        pico_stdlib
+                        hardware_dma
+                        hardware_flash
+                        hardware_structs
+                        hardware_resets
+                        i2c_slave
+                        cmsis_core)
 
-pico_enable_stdio_usb(${BOOTLOADER} 1)
+    pico_enable_stdio_usb(${BOOTLOADER} 1)
+endif ()
 
 # Firmware
 add_executable(${NAME}
     main.c
     usb_descriptors.c
     uart_task.c
+    webusb_task.c
     lcd.c
     i2c_peripheral.c
 )
@@ -84,4 +90,9 @@ target_link_libraries(${NAME}
 
 pico_add_extra_outputs(${NAME})
 
-pico_set_linker_script(${NAME}  ${CMAKE_CURRENT_SOURCE_DIR}/firmware.ld)
+if (CMAKE_BUILD_TYPE STREQUAL "Debug")
+    message("Linking firmware for standalone use")
+else ()
+    message("Linking firmware for use with bootloader")
+    pico_set_linker_script(${NAME}  ${CMAKE_CURRENT_SOURCE_DIR}/firmware.ld)
+endif ()
