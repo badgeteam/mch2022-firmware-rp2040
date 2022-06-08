@@ -41,20 +41,20 @@ void webusb_task() {
     }
 
     if (webusb_esp32_baudrate_override_requested) {
-        if (get_webusb_connected(1)) {
+        if (get_webusb_connected(0)) {
             webusb_set_uart_baudrate(0, true, webusb_esp32_baudrate_override_value); // Enable baudrate override
         }
         webusb_esp32_baudrate_override_requested = false;
     }
     if (webusb_fpga_baudrate_override_requested) {
-        if (get_webusb_connected(2)) {
+        if (get_webusb_connected(1)) {
             webusb_set_uart_baudrate(1, true, webusb_fpga_baudrate_override_value); // Enable baudrate override
         }
         webusb_fpga_baudrate_override_requested = false;
     }
 
     if (webusb_mode_change_requested) {
-        if (get_webusb_connected(1)) {
+        if (get_webusb_connected(0)) {
             i2c_set_webusb_mode(webusb_mode_change_target); // Set ESP32 WebUSB mode
         }
         webusb_mode_change_requested = false;
@@ -64,10 +64,10 @@ void webusb_task() {
         // On status change
         if (webusb_status_changed[idx]) {
             if (!get_webusb_connected(idx)) {
-                if (idx == 1) { // ESP32
+                if (idx == 0) { // ESP32
                     webusb_set_uart_baudrate(0, false, 0); // Restore control over ESP32 baudrate to CDC
                     i2c_set_webusb_mode(0x00); // Disable ESP32 WebUSB mode
-                } else if (idx == 2) { // FPGA
+                } else if (idx == 1) { // FPGA
                     webusb_set_uart_baudrate(1, false, 0); // Restore control over FPGA baudrate to CDC
                 }
             }
