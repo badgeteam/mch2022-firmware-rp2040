@@ -12,7 +12,6 @@
 #include "hardware.h"
 #include "i2c_peripheral.h"
 
-uint16_t prev_webusb_status[CFG_TUD_VENDOR] = {0x0000};
 uint16_t webusb_status[CFG_TUD_VENDOR] = {0x0000};
 bool webusb_status_changed[CFG_TUD_VENDOR] = {false};
 
@@ -62,7 +61,7 @@ void webusb_task() {
     
     for (uint8_t idx = 0; idx < CFG_TUD_VENDOR; idx++) {
         // On status change
-        if (webusb_status_changed[idx]) {
+        /*if (webusb_status_changed[idx]) {
             if (!get_webusb_connected(idx)) {
                 if (idx == 0) { // ESP32
                     webusb_set_uart_baudrate(0, false, 0); // Restore control over ESP32 baudrate to CDC
@@ -71,7 +70,7 @@ void webusb_task() {
                     webusb_set_uart_baudrate(1, false, 0); // Restore control over FPGA baudrate to CDC
                 }
             }
-        }
+        }*/
 
         // Data transfer
         int available = tud_vendor_n_available(idx);
@@ -135,12 +134,12 @@ bool tud_vendor_control_xfer_cb(uint8_t rhport, uint8_t stage, tusb_control_requ
                 if (request->wIndex == ITF_NUM_VENDOR_0) {
                     webusb_status[0] = request->wValue;
                     webusb_status_changed[0] = true;
-                }
-                if (request->wIndex == ITF_NUM_VENDOR_1) {
+                    return tud_control_status(rhport, request);
+                } else if (request->wIndex == ITF_NUM_VENDOR_1) {
                     webusb_status[1] = request->wValue;
                     webusb_status_changed[1] = true;
+                    return tud_control_status(rhport, request);
                 }
-                return tud_control_status(rhport, request);
             }
             if (request->bRequest == 0x23) { // Reset ESP32
                 if (request->wIndex == ITF_NUM_VENDOR_0) {
@@ -153,19 +152,19 @@ bool tud_vendor_control_xfer_cb(uint8_t rhport, uint8_t stage, tusb_control_requ
                 if (request->wIndex == ITF_NUM_VENDOR_0) {
                     webusb_esp32_baudrate_override_requested = true;
                     webusb_esp32_baudrate_override_value = (request->wValue) * 100;
-                }
-                if (request->wIndex == ITF_NUM_VENDOR_1) {
+                    return tud_control_status(rhport, request);
+                } else if (request->wIndex == ITF_NUM_VENDOR_1) {
                     webusb_fpga_baudrate_override_requested = true;
                     webusb_fpga_baudrate_override_value = (request->wValue) * 100;
+                    return tud_control_status(rhport, request);
                 }
-                return tud_control_status(rhport, request);
             }
             if (request->bRequest == 0x25) { // Set mode
                 if (request->wIndex == ITF_NUM_VENDOR_0) {
                     webusb_mode_change_requested = true;
                     webusb_mode_change_target = request->wValue & 0xFF;
+                    return tud_control_status(rhport, request);
                 }
-                return tud_control_status(rhport, request);
             }
             break;
         }
