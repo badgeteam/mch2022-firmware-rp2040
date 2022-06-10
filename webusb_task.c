@@ -15,71 +15,47 @@
 uint16_t webusb_status[CFG_TUD_VENDOR] = {0x0000};
 bool webusb_status_changed[CFG_TUD_VENDOR] = {false};
 
-#define WEBUSB_STATUS_BIT_CONNECTED 0x0001
-
-bool webusb_esp32_reset_requested = false;
-bool webusb_esp32_reset_mode = false;
-
-bool webusb_esp32_baudrate_override_requested = false;
+uint16_t webusb_esp32_status = 0x0000;
+bool     webusb_esp32_reset_requested = false;
+bool     webusb_esp32_reset_mode = false;
+bool     webusb_esp32_baudrate_override_requested = false;
 uint32_t webusb_esp32_baudrate_override_value = 0;
-bool webusb_fpga_baudrate_override_requested = false;
+bool     webusb_esp32_mode_change_requested = false;
+uint8_t  webusb_esp32_mode_change_target = 0;
+
+uint16_t webusb_fpga_status = 0x0000;
+bool     webusb_fpga_baudrate_override_requested = false;
 uint32_t webusb_fpga_baudrate_override_value = 0;
 
-bool webusb_mode_change_requested = false;
-uint8_t webusb_mode_change_target = 0;
-
-void webusb_debug(char* message) {
-    tud_vendor_n_write(0, message, strlen(message));
-}
-
 void webusb_task() {
-    char message[128];
     if (webusb_esp32_reset_requested) {
         esp32_reset(webusb_esp32_reset_mode); // Value controls the mode: 1 for download mode, 0 for normal mode
         webusb_esp32_reset_requested = false;
     }
 
-    if (webusb_esp32_baudrate_override_requested) {
-        if (get_webusb_connected(0)) {
-            webusb_set_uart_baudrate(0, true, webusb_esp32_baudrate_override_value); // Enable baudrate override
-        }
+    if (webusb_esp32_baudrate_override_requested) { // Set baudrate of ESP32 UART in WebUSB mode
+        webusb_set_uart_baudrate(0, webusb_esp32_baudrate_override_value);
         webusb_esp32_baudrate_override_requested = false;
     }
-    if (webusb_fpga_baudrate_override_requested) {
-        if (get_webusb_connected(1)) {
-            webusb_set_uart_baudrate(1, true, webusb_fpga_baudrate_override_value); // Enable baudrate override
-        }
+    if (webusb_fpga_baudrate_override_requested) { // Set baudrate of FPGA UART in WebUSB mode
+        webusb_set_uart_baudrate(1, webusb_fpga_baudrate_override_value);
         webusb_fpga_baudrate_override_requested = false;
     }
 
-    if (webusb_mode_change_requested) {
-        if (get_webusb_connected(0)) {
-            i2c_set_webusb_mode(webusb_mode_change_target); // Set ESP32 WebUSB mode
-        }
-        webusb_mode_change_requested = false;
+    if (webusb_esp32_mode_change_requested) {
+        i2c_set_webusb_mode(webusb_esp32_mode_change_target); // Set ESP32 WebUSB mode
+        webusb_esp32_mode_change_requested = false;
     }
-    
-    for (uint8_t idx = 0; idx < CFG_TUD_VENDOR; idx++) {
-        // On status change
-        /*if (webusb_status_changed[idx]) {
-            if (!get_webusb_connected(idx)) {
-                if (idx == 0) { // ESP32
-                    webusb_set_uart_baudrate(0, false, 0); // Restore control over ESP32 baudrate to CDC
-                    i2c_set_webusb_mode(0x00); // Disable ESP32 WebUSB mode
-                } else if (idx == 1) { // FPGA
-                    webusb_set_uart_baudrate(1, false, 0); // Restore control over FPGA baudrate to CDC
-                }
-            }
-        }*/
 
-        // Data transfer
+    // Data transfer
+    for (uint8_t idx = 0; idx < CFG_TUD_VENDOR; idx++) {
         int available = tud_vendor_n_available(idx);
         if (available > 0) {
-            uint8_t buffer[64];
+            uint8_t buffer[256];
             uint32_t length = tud_vendor_n_read(idx, buffer, sizeof(buffer));
-            if (WEBUSB_IDX_ESP32) {
+            if (idx == WEBUSB_IDX_ESP32) {
                 uart_write_blocking(UART_ESP32, buffer, length);
-            } else if (WEBUSB_IDX_FPGA) {
+            } else if (idx == WEBUSB_IDX_FPGA) {
                 uart_write_blocking(UART_FPGA, buffer, length);
             }
         }
@@ -96,16 +72,19 @@ tusb_desc_webusb_url_t desc_url = {
 };
 
 bool get_webusb_connected(uint8_t idx) {
-    return webusb_status[idx] & WEBUSB_STATUS_BIT_CONNECTED;
+    if (idx == WEBUSB_IDX_ESP32) return webusb_esp32_status & 0x0001;
+    if (idx == WEBUSB_IDX_FPGA)  return webusb_fpga_status & 0x0001;
+    return false;
 }
 
 uint16_t get_webusb_status(uint8_t idx) {
-    return webusb_status[idx];
+    if (idx == WEBUSB_IDX_ESP32) return webusb_esp32_status;
+    if (idx == WEBUSB_IDX_FPGA)  return webusb_fpga_status;
+    return 0x0000;
 }
 
 bool tud_vendor_control_xfer_cb(uint8_t rhport, uint8_t stage, tusb_control_request_t const * request) {
-    // nothing to with DATA & ACK stage
-    if (stage != CONTROL_STAGE_SETUP) return true;
+    if (stage != CONTROL_STAGE_SETUP) return true; // nothing to with DATA & ACK stage
 
     switch (request->bmRequestType_bit.type) {
         case TUSB_REQ_TYPE_VENDOR:
@@ -132,12 +111,10 @@ bool tud_vendor_control_xfer_cb(uint8_t rhport, uint8_t stage, tusb_control_requ
         case TUSB_REQ_TYPE_CLASS: {
             if (request->bRequest == 0x22) { // Set status
                 if (request->wIndex == ITF_NUM_VENDOR_0) {
-                    webusb_status[0] = request->wValue;
-                    webusb_status_changed[0] = true;
+                    webusb_esp32_status = request->wValue;
                     return tud_control_status(rhport, request);
                 } else if (request->wIndex == ITF_NUM_VENDOR_1) {
-                    webusb_status[1] = request->wValue;
-                    webusb_status_changed[1] = true;
+                    webusb_fpga_status = request->wValue;
                     return tud_control_status(rhport, request);
                 }
             }
@@ -161,8 +138,8 @@ bool tud_vendor_control_xfer_cb(uint8_t rhport, uint8_t stage, tusb_control_requ
             }
             if (request->bRequest == 0x25) { // Set mode
                 if (request->wIndex == ITF_NUM_VENDOR_0) {
-                    webusb_mode_change_requested = true;
-                    webusb_mode_change_target = request->wValue & 0xFF;
+                    webusb_esp32_mode_change_requested = true;
+                    webusb_esp32_mode_change_target = request->wValue & 0xFF;
                     return tud_control_status(rhport, request);
                 }
             }
