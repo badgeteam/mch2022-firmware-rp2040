@@ -47,7 +47,7 @@ int main(void) {
 
     while (1) {
         tud_task();
-        cdc_task();
+        uart_task();
         i2c_task();
         webusb_task();
     }

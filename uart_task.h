@@ -5,7 +5,7 @@
 void setup_uart();
 
 // USB CDC serial port
-void cdc_task(void);
+void uart_task(void);
 void cdc_send(uint8_t itf, uint8_t* buf, uint32_t count);
 
 // Hardware serial port
@@ -24,4 +24,4 @@ void send_interrupt_to_esp32();
 void fpga_loopback(bool enable);
 
 // WebUSB baudrate control
-uint32_t webusb_set_uart_baudrate(uint8_t index, bool enable_override, uint32_t baudrate);
+void webusb_set_uart_baudrate(uint8_t index, uint32_t baudrate);

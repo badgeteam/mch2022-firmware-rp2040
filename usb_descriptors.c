@@ -18,9 +18,8 @@ char const* string_desc_arr [] = {
   "MCH2022 badge",               // 2: Product
   "ESP32 console",               // 3: CDC Interface
   "FPGA console",                // 4: CDC Interface
-  "WebUSB control",              // 5: WebUSB interface
-  "WebUSB ESP32 console",        // 6: WebUSB interface
-  "WebUSB FPGA console",         // 7: WebUSB interface
+  "WebUSB ESP32 console",        // 5: WebUSB interface
+  "WebUSB FPGA console",         // 6: WebUSB interface
 };
 
 enum {
@@ -31,7 +30,6 @@ enum {
     STRING_DESC_CDC_1,
     STRING_DESC_VENDOR_0,
     STRING_DESC_VENDOR_1,
-    STRING_DESC_VENDOR_2,
     STRING_DESC_SERIAL // (Not in the string description array)
 };
 
@@ -115,8 +113,6 @@ uint8_t const * tud_descriptor_device_cb(void) {
 #define EPNUM_VENDOR_0_IN  0x85
 #define EPNUM_VENDOR_1_OUT 0x06 // Endpoint 6: WebUSB
 #define EPNUM_VENDOR_1_IN  0x86
-#define EPNUM_VENDOR_2_OUT 0x07 // Endpoint 7: WebUSB
-#define EPNUM_VENDOR_2_IN  0x87
 
 uint8_t const desc_fs_configuration[] = {
     // Config number, interface count, string index, total length, attribute, power in mA
@@ -131,7 +127,6 @@ uint8_t const desc_fs_configuration[] = {
     // WebUSB: Interface number, string index, EP Out & IN address, EP size
     TUD_VENDOR_DESCRIPTOR(ITF_NUM_VENDOR_0, STRING_DESC_VENDOR_0, EPNUM_VENDOR_0_OUT, EPNUM_VENDOR_0_IN, 32),
     TUD_VENDOR_DESCRIPTOR(ITF_NUM_VENDOR_1, STRING_DESC_VENDOR_1, EPNUM_VENDOR_1_OUT, EPNUM_VENDOR_1_IN, 32),
-    TUD_VENDOR_DESCRIPTOR(ITF_NUM_VENDOR_2, STRING_DESC_VENDOR_2, EPNUM_VENDOR_2_OUT, EPNUM_VENDOR_2_IN, 32),
 
 };
 

@@ -32,3 +32,36 @@ The USB descriptor is based on the example from the tinyusb library by Ha Thach 
 The makefile has been provided by Jana Marie Hemsing under MIT license.
 
 The other parts of the firmware are original work by [Renze Nicolai (Nicolai Electronics)](https://nicolaielectronics.nl) licensed under MIT license.
+
+## Debugging
+
+You need the Raspberry Pi supplied version of openocd and a Raspberry Pi Pico flashed with the Picoprobe firmware hooked up to the SWD interface of the badge for this to work.
+
+
+### Running OpenOCD
+
+```
+openocd -f interface/picoprobe.cfg -f target/rp2040.cfg -s tcl
+```
+
+### Running GDB
+
+```
+arm-none-eabi-gdb build/mch2022_firmware.elf
+```
+
+### Connecting GDB to OpenOCD
+
+(on the GDB prompt)
+
+```
+target extended-remote :3333
+```
+
+### Loading firmware, resetting the RP2040 and starting the firmware
+
+```
+load
+monitor reset init
+continue
+```
