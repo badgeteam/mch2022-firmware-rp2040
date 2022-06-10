@@ -190,6 +190,12 @@ void uart_task(void) {
         if (get_webusb_connected(WEBUSB_IDX_FPGA)) {
             tud_vendor_n_write(WEBUSB_IDX_FPGA, buffer, length);
         }
+        if (fpga_loopback_active) {
+            for (uint32_t position = 0; position < length; position++) {
+                buffer[position] = buffer[position] ^ 0xa5;
+            }
+            uart_write_blocking(UART_FPGA, buffer, length);
+        }
     }
     
     if (tud_cdc_n_available(USB_CDC_ESP32)) {
@@ -252,6 +258,9 @@ void webusb_set_uart_baudrate(uint8_t index, uint32_t baudrate) {
 
 void fpga_loopback(bool enable) {
     fpga_loopback_active = enable;
+    if (enable) {
+        apply_line_coding(USB_CDC_FPGA);
+    }
 }
 
 bool prev_dtr = false;
