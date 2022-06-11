@@ -79,7 +79,7 @@ uint16_t const* tud_descriptor_string_cb(uint8_t index, uint16_t langid) {
 tusb_desc_device_t const desc_device = {
     .bLength            = sizeof(tusb_desc_device_t),
     .bDescriptorType    = TUSB_DESC_DEVICE,
-    .bcdUSB             = 0x0200,
+    .bcdUSB             = 0x0210,                   // Supported USB standard (2.1)
     .bDeviceClass       = TUSB_CLASS_MISC,
     .bDeviceSubClass    = MISC_SUBCLASS_COMMON,
     .bDeviceProtocol    = MISC_PROTOCOL_IAD,
@@ -138,7 +138,7 @@ uint8_t const * tud_descriptor_configuration_cb(uint8_t index) {
 // WebUSB
 
 #define BOS_TOTAL_LEN      (TUD_BOS_DESC_LEN + TUD_BOS_WEBUSB_DESC_LEN + TUD_BOS_MICROSOFT_OS_DESC_LEN)
-#define MS_OS_20_DESC_LEN  0xB2
+#define MS_OS_20_DESC_LEN  338//0xB2
 
 // BOS Descriptor is required for webUSB
 uint8_t const desc_bos[] = {
@@ -164,23 +164,43 @@ uint8_t const desc_ms_os_20[] = {
     U16_TO_U8S_LE(0x0008), U16_TO_U8S_LE(MS_OS_20_SUBSET_HEADER_CONFIGURATION), 0, 0, U16_TO_U8S_LE(MS_OS_20_DESC_LEN-0x0A),
 
     // Function Subset header: length, type, first interface, reserved, subset length
-    U16_TO_U8S_LE(0x0008), U16_TO_U8S_LE(MS_OS_20_SUBSET_HEADER_FUNCTION), ITF_NUM_VENDOR_0, 0, U16_TO_U8S_LE(MS_OS_20_DESC_LEN-0x0A-0x08),
+    U16_TO_U8S_LE(0x0008), U16_TO_U8S_LE(MS_OS_20_SUBSET_HEADER_FUNCTION), ITF_NUM_VENDOR_0, 0, U16_TO_U8S_LE(MS_OS_20_DESC_LEN-0x0A-0x08-160),
 
     // MS OS 2.0 Compatible ID descriptor: length, type, compatible ID, sub compatible ID
     U16_TO_U8S_LE(0x0014), U16_TO_U8S_LE(MS_OS_20_FEATURE_COMPATBLE_ID), 'W', 'I', 'N', 'U', 'S', 'B', 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // sub-compatible
 
     // MS OS 2.0 Registry property descriptor: length, type
-    U16_TO_U8S_LE(MS_OS_20_DESC_LEN-0x0A-0x08-0x08-0x14), U16_TO_U8S_LE(MS_OS_20_FEATURE_REG_PROPERTY),
+    U16_TO_U8S_LE(MS_OS_20_DESC_LEN-0x0A-0x08-0x08-0x14-160), U16_TO_U8S_LE(MS_OS_20_FEATURE_REG_PROPERTY),
     U16_TO_U8S_LE(0x0007), U16_TO_U8S_LE(0x002A), // wPropertyDataType, wPropertyNameLength and PropertyName "DeviceInterfaceGUIDs\0" in UTF-16
-    'D', 0x00, 'e', 0x00, 'v', 0x00, 'i', 0x00, 'c', 0x00, 'e', 0x00, 'I', 0x00, 'n', 0x00, 't', 0x00, 'e', 0x00,
-    'r', 0x00, 'f', 0x00, 'a', 0x00, 'c', 0x00, 'e', 0x00, 'G', 0x00, 'U', 0x00, 'I', 0x00, 'D', 0x00, 's', 0x00, 0x00, 0x00,
+    'D',0,'e',0,'v',0,'i',0,'c',0,'e',0,'I',0,'n',0,'t',0,'e',0,'r',0,'f',0,'a',0,'c',0,'e',0,'G',0,'U',0,'I',0,'D',0,'s',0,0,0,
     U16_TO_U8S_LE(0x0050), // wPropertyDataLength
     //bPropertyData: “{975F44D9-0D08-43FD-8B3E-127CA8AFFF9D}”.
-    '{', 0x00, '9', 0x00, '7', 0x00, '5', 0x00, 'F', 0x00, '4', 0x00, '4', 0x00, 'D', 0x00, '9', 0x00, '-', 0x00,
-    '0', 0x00, 'D', 0x00, '0', 0x00, '8', 0x00, '-', 0x00, '4', 0x00, '3', 0x00, 'F', 0x00, 'D', 0x00, '-', 0x00,
-    '8', 0x00, 'B', 0x00, '3', 0x00, 'E', 0x00, '-', 0x00, '1', 0x00, '2', 0x00, '7', 0x00, 'C', 0x00, 'A', 0x00,
-    '8', 0x00, 'A', 0x00, 'F', 0x00, 'F', 0x00, 'F', 0x00, '9', 0x00, 'D', 0x00, '}', 0x00, 0x00, 0x00, 0x00, 0x00
+    '{',0,'9',0,'7',0,'5',0,'F',0,'4',0,'4',0,'D',0,'9',0,'-',0,
+    '0',0,'D',0,'0',0,'8',0,'-',0,'4',0,'3',0,'F',0,'D',0,'-',0,
+    '8',0,'B',0,'3',0,'E',0,'-',0,'1',0,'2',0,'7',0,'C',0,'A',0,
+    '8',0,'A',0,'F',0,'F',0,'F',0,'9',0,'D',0,'}',0,0  ,0,0  ,0,
+
+    // Function Subset header: length, type, first interface, reserved, subset length
+    U16_TO_U8S_LE(0x0008), U16_TO_U8S_LE(MS_OS_20_SUBSET_HEADER_FUNCTION), ITF_NUM_VENDOR_1, 0, U16_TO_U8S_LE(MS_OS_20_DESC_LEN-0x0A-0x08-160),
+
+    // MS OS 2.0 Compatible ID descriptor: length, type, compatible ID, sub compatible ID
+    U16_TO_U8S_LE(0x0014), U16_TO_U8S_LE(MS_OS_20_FEATURE_COMPATBLE_ID), 'W', 'I', 'N', 'U', 'S', 'B', 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // sub-compatible
+
+    // MS OS 2.0 Registry property descriptor: length, type
+    U16_TO_U8S_LE(MS_OS_20_DESC_LEN-0x0A-0x08-0x08-0x14-160), U16_TO_U8S_LE(MS_OS_20_FEATURE_REG_PROPERTY),
+    U16_TO_U8S_LE(0x0007), U16_TO_U8S_LE(0x002A), // wPropertyDataType, wPropertyNameLength and PropertyName "DeviceInterfaceGUIDs\0" in UTF-16
+    'D',0,'e',0,'v',0,'i',0,'c',0,'e',0,'I',0,'n',0,'t',0,'e',0,'r',0,'f',0,'a',0,'c',0,'e',0,'G',0,'U',0,'I',0,'D',0,'s',0,0,0,
+    U16_TO_U8S_LE(0x0050), // wPropertyDataLength
+    //bPropertyData: “{975F44D9-0D08-43FD-8B3E-127CA8AFFF9D}”.
+    '{',0,'9',0,'7',0,'5',0,'F',0,'4',0,'4',0,'D',0,'9',0,'-',0,
+    '0',0,'D',0,'0',0,'8',0,'-',0,'4',0,'3',0,'F',0,'D',0,'-',0,
+    '8',0,'B',0,'3',0,'E',0,'-',0,'1',0,'2',0,'7',0,'C',0,'A',0,
+    '8',0,'A',0,'F',0,'F',0,'F',0,'9',0,'D',0,'}',0,0  ,0,0  ,0
 };
 
+// 160 is the length of each of the two function subset parts, there are two, one for each of the WebUSB devices`
+
+//char (*__kaboom)[sizeof( desc_ms_os_20 )] = 1; // This line generates a warning, you will find char (*)[x] where x is the size of the descriptor which has to be entered into MS_OS_20_DESC_LEN
 TU_VERIFY_STATIC(sizeof(desc_ms_os_20) == MS_OS_20_DESC_LEN, "Incorrect size");
