@@ -186,15 +186,16 @@ void uart_task(void) {
     }
 
     if (length > 0) {
-        cdc_send(1, buffer, length);
-        if (get_webusb_connected(WEBUSB_IDX_FPGA)) {
-            tud_vendor_n_write(WEBUSB_IDX_FPGA, buffer, length);
-        }
         if (fpga_loopback_active) {
             for (uint32_t position = 0; position < length; position++) {
                 buffer[position] = buffer[position] ^ 0xa5;
             }
             uart_write_blocking(UART_FPGA, buffer, length);
+        } else {
+            cdc_send(1, buffer, length);
+            if (get_webusb_connected(WEBUSB_IDX_FPGA)) {
+                tud_vendor_n_write(WEBUSB_IDX_FPGA, buffer, length);
+            }
         }
     }
     
@@ -203,7 +204,7 @@ void uart_task(void) {
         uart_write_blocking(UART_ESP32, buffer, length);
     }
 
-    if (tud_cdc_n_available(USB_CDC_FPGA)) {
+    if (tud_cdc_n_available(USB_CDC_FPGA) && !fpga_loopback_active) {
         length = tud_cdc_n_read(USB_CDC_FPGA, buffer, sizeof(buffer));
         uart_write_blocking(UART_FPGA, buffer, length);
     }
