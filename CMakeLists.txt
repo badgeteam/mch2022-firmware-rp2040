@@ -3,8 +3,8 @@ cmake_minimum_required(VERSION 3.12)
 message("Build type: \"${CMAKE_BUILD_TYPE}\"")
 
 # Project name
-set(NAME mch2022_firmware)
-set(BOOTLOADER mch2022_bootloader)
+set(NAME rp2040_firmware)
+set(BOOTLOADER rp2040_bootloader)
 
 # Board type
 set(PICO_BOARD none)

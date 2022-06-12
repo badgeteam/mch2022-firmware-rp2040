@@ -22,7 +22,7 @@
 #define PICO_FLASH_SIZE_BYTES (2 * 1024 * 1024)
 #endif
 
-#define DEBUG
+//#define DEBUG
 
 #ifdef DEBUG
 #include <stdio.h>
@@ -34,20 +34,21 @@
 #define DBG_PRINTF(...) { }
 #endif
 
-// The bootloader can be entered in two ways:
-//  - Watchdog scratch[5] == BOOTLOADER_ENTRY_PIN && scratch[6] == ~BOOTLOADER_ENTRY_MAGIC
+// The bootloader can be entered in three ways:
+//  - Watchdog scratch[5] == BOOTLOADER_ENTRY_MAGIC && scratch[6] == ~BOOTLOADER_ENTRY_MAGIC
 //  - No valid image header
+#define BOOTLOADER_ENTRY_PIN 4 //Menu button
 #define BOOTLOADER_ENTRY_MAGIC 0xb105f00d
 
 #define UART_TX_PIN 0
 #define UART_RX_PIN 1
-#define UART_BAUD   115200
+#define UART_BAUD   921600
 
 #define I2C_SYSTEM i2c1
 #define I2C_SYSTEM_SDA_PIN 2
 #define I2C_SYSTEM_SCL_PIN 3
-#define ESP32_BL_PIN 12 // Output, high for normal boot, low for download boot, also serves as IRQ
-#define ESP32_EN_PIN 13 // Output, high to enable ESP32, low to reset ESP32
+#define ESP32_BL_PIN 12
+#define ESP32_EN_PIN 13
 #define ESP32_INT_PIN 14
 #define LCD_BACKLIGHT_PIN 15
 #define FPGA_CDONE_PIN 20
@@ -185,10 +186,10 @@ const struct command_desc cmds[] = {
 		.handle = &handle_write,
 	},
 	{
-		// SEAL addr vtor len crc
+		// SEAL vtor len crc
 		// OKOK
 		.opcode = CMD_SEAL,
-		.nargs = 4,
+		.nargs = 3,
 		.resp_nargs = 0,
 		.size = NULL,
 		.handle = &handle_seal,
@@ -372,27 +373,17 @@ static uint32_t handle_erase(uint32_t *args_in, uint8_t *data_in, uint32_t *resp
 {
 	uint32_t addr = args_in[0];
 	uint32_t size = args_in[1];
-	
-	printf("Erase address: %08lX, size: %08lX\n", addr, size);
 
 	if ((addr < ERASE_ADDR_MIN) || (addr + size >= FLASH_ADDR_MAX)) {
 		// Outside flash
-		if (addr < ERASE_ADDR_MIN) {
-			printf("Outside flash (addr < ERASE_ADDR_MIN) (%08X < %08X)\n", addr, ERASE_ADDR_MIN);
-		}
-		if (addr + size >= FLASH_ADDR_MAX) {
-			printf("Outside flash (addr + size >= FLASH_ADDR_MAX) (%08X >= %08X)\n", addr + size, FLASH_ADDR_MAX);
-		}
 		return RSP_ERR;
 	}
 
 	if ((addr & (FLASH_SECTOR_SIZE - 1)) || (size & (FLASH_SECTOR_SIZE - 1))) {
 		// Must be aligned
-		printf("Must be aligned %lu & %lu || %lu & %lu\n", addr, (FLASH_SECTOR_SIZE - 1), size, (FLASH_SECTOR_SIZE - 1));
 		return RSP_ERR;
 	}
 
-	printf("Erase...\n");
 	flash_range_erase(addr - XIP_BASE, size);
 
 	return RSP_OK;
@@ -430,70 +421,45 @@ static uint32_t handle_write(uint32_t *args_in, uint8_t *data_in, uint32_t *resp
 	uint32_t addr = args_in[0];
 	uint32_t size = args_in[1];
 	
-	printf("Write to address: %08lX, size: %08lX\n", addr, size);
-	
 	if (addr < WRITE_ADDR_MIN) {
 		// Outside flash
-		printf("Outside flash %08lX < %08lX\n", addr, WRITE_ADDR_MIN);
 		return RSP_ERR;
 	}
 
-	printf("Writing...\n");
 	flash_range_program(addr - XIP_BASE, data_in, size);
 
 	resp_args_out[0] = calc_crc32((void *)addr, size);
-	printf("CRC: %08lX\n", resp_args_out[0]);
 
 	return RSP_OK;
 }
 
 struct image_header {
-	uint32_t addr;
 	uint32_t vtor;
 	uint32_t size;
 	uint32_t crc;
-	uint8_t pad[FLASH_PAGE_SIZE - (4 * 4)];
+	uint8_t pad[FLASH_PAGE_SIZE - (3 * 4)];
 };
 static_assert(sizeof(struct image_header) == FLASH_PAGE_SIZE, "image_header must be FLASH_PAGE_SIZE bytes");
 
 static bool image_header_ok(struct image_header *hdr)
 {
 	uint32_t *vtor = (uint32_t *)hdr->vtor;
-	uint32_t calc = calc_crc32((void *)hdr->addr, hdr->size);
+	uint32_t calc = calc_crc32((void *)hdr->vtor, hdr->size);
 
-	printf("Reset vector    : %08X\n", hdr->vtor);
-	printf("Firmware address: %08X\n", hdr->addr);
-	printf("Firmware size   : %08X\n", hdr->size);
-	printf("Firmware CRC    : %08X\n", hdr->crc);
-	printf("Check CRC       : %08X\n", calc);
-	
 	// CRC has to match
 	if (calc != hdr->crc) {
-		printf("CRC check failed");
 		return false;
 	}
-	
-	printf("CRC check ok");
-	return true;
 
 	// Stack pointer needs to be in RAM
 	if (vtor[0] < SRAM_BASE) {
-		printf("reset vector check failed 1");
 		return false;
 	}
-	
-	printf("reset vector in RAM");
-	return false;
 
 	// Reset vector should be in the image, and thumb (bit 0 set)
 	if ((vtor[1] < hdr->vtor) || (vtor[1] > hdr->vtor + hdr->size) || !(vtor[1] & 1)) {
-		printf("reset vector check failed 2");
 		return false;
 	}
-	
-	printf("reset vector in IMAGE");
-	
-	//return false;
 
 	// Looks OK.
 	return true;
@@ -503,20 +469,17 @@ static bool image_header_ok(struct image_header *hdr)
 static uint32_t handle_seal(uint32_t *args_in, uint8_t *data_in, uint32_t *resp_args_out, uint8_t *resp_data_out)
 {
 	struct image_header hdr = {
-		.addr = args_in[0],
-		.vtor = args_in[1],
-		.size = args_in[2],
-		.crc = args_in[3],
+		.vtor = args_in[0],
+		.size = args_in[1],
+		.crc = args_in[2],
 	};
 
 	if ((hdr.vtor & 0xff) || (hdr.size & 0x3)) {
 		// Must be aligned
-		printf("!!! Must be aligned");
 		return RSP_ERR;
 	}
 
 	if (!image_header_ok(&hdr)) {
-		printf("!!! Image header not OK");
 		return RSP_ERR;
 	}
 
@@ -525,7 +488,6 @@ static uint32_t handle_seal(uint32_t *args_in, uint8_t *data_in, uint32_t *resp_
 
 	struct image_header *check = (struct image_header *)(XIP_BASE + IMAGE_HEADER_OFFSET);
 	if (memcmp(&hdr, check, sizeof(hdr))) {
-		printf("!!! Flash write failed");
 		return RSP_ERR;
 	}
 
@@ -662,7 +624,6 @@ static enum state state_read_args(struct cmd_context *ctx)
 	if (!desc) {
 		// TODO: Error handler that can do args?
 		ctx->status = RSP_ERR;
-		printf("!! Invalid CMD %08X\n", ctx->opcode);
 		return STATE_ERROR;
 	}
 
@@ -684,7 +645,6 @@ static enum state state_read_data(struct cmd_context *ctx)
 	if (desc->size) {
 		ctx->status = desc->size(ctx->args, &ctx->data_len, &ctx->resp_data_len);
 		if (is_error(ctx->status)) {
-			printf("!! Data read error\n");
 			return STATE_ERROR;
 		}
 	} else {
@@ -706,7 +666,6 @@ static enum state state_handle_data(struct cmd_context *ctx)
 	if (desc->handle) {
 		ctx->status = desc->handle(ctx->args, ctx->data, ctx->resp_args, ctx->resp_data);
 		if (is_error(ctx->status)) {
-			printf("!! Data handle error\n");
 			return STATE_ERROR;
 		}
 	} else {
@@ -734,7 +693,7 @@ static bool should_stay_in_bootloader()
 {
 	bool wd_says_so = (watchdog_hw->scratch[5] == BOOTLOADER_ENTRY_MAGIC) &&
 		(watchdog_hw->scratch[6] == ~BOOTLOADER_ENTRY_MAGIC);
-	return wd_says_so;
+	return !gpio_get(BOOTLOADER_ENTRY_PIN) || wd_says_so;
 }
 
 int main(void)
@@ -747,6 +706,12 @@ int main(void)
 	gpio_put(FPGA_RESET_PIN, 0);
 	
 	setup_i2c_registers();
+	
+	gpio_init(BOOTLOADER_ENTRY_PIN);
+	gpio_pull_up(BOOTLOADER_ENTRY_PIN);
+	gpio_set_dir(BOOTLOADER_ENTRY_PIN, 0);
+
+	sleep_ms(10);
 
 	struct image_header *hdr = (struct image_header *)(XIP_BASE + IMAGE_HEADER_OFFSET);
 
@@ -757,8 +722,7 @@ int main(void)
 		jump_to_vtor(vtor);
 	}
 
-	//DBG_PRINTF_INIT();
-	stdio_usb_init();
+	DBG_PRINTF_INIT();
 
 	uart_init(uart0, UART_BAUD);
 	gpio_set_function(UART_TX_PIN, GPIO_FUNC_UART);
@@ -771,15 +735,6 @@ int main(void)
 	uint8_t uart_buf[(sizeof(uint32_t) * (1 + MAX_NARG)) + MAX_DATA_LEN];
 	ctx.uart_buf = uart_buf;
 	enum state state = STATE_WAIT_FOR_SYNC;
-	
-	i2c_bl_set_state(0xA0);
-	sleep_ms(2000);
-	printf("~~~ BOOTLOADER: VERIFY IMAGE HEADER\n");
-	printf("Result: %d\n", image_header_ok(hdr));
-	i2c_bl_set_state(0xA1);
-	printf("Image header offset %08X\n", XIP_BASE + IMAGE_HEADER_OFFSET);
-	i2c_bl_set_state(0xA2);
-	printf("Starting UART download protocol...\n");
 
 	while (1) {
 		i2c_bl_set_state((((uint8_t) state) & 0x0F) | 0xB0);

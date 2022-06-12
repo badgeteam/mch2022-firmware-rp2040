@@ -86,7 +86,7 @@ void setup_i2c_registers() {
         i2c_registers.modified[reg] = false;
     }
 
-    i2c_registers.registers[I2C_REGISTER_FW_VER] = 0x04;
+    i2c_registers.registers[I2C_REGISTER_FW_VER] = 0x05;
 
     pico_unique_board_id_t id;
     pico_get_unique_board_id((pico_unique_board_id_t*) &i2c_registers.registers[I2C_REGISTER_UID0]);

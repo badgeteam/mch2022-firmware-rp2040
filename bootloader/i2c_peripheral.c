@@ -32,7 +32,7 @@ struct {
 
 void setup_i2c_registers() {
     i2c_registers.registers[I2C_REGISTER_FW_VER] = 0xFF;
-    i2c_registers.registers[I2C_REGISTER_BL_VER] = 0x01;
+    i2c_registers.registers[I2C_REGISTER_BL_VER] = 0x02;
     i2c_registers.registers[I2C_REGISTER_BL_STATE] = 0x00;
     i2c_registers.registers[I2C_REGISTER_BL_CTRL] = 0x00;
 }

@@ -5,8 +5,8 @@
 INSTALL_PREFIX := $PWD
 BUILD_DIR := build
 
-BL_BIN := mch2022_bootloader.bin
-FW_BIN := mch2022_firmware.bin
+BL_BIN := rp2040_bootloader.bin
+FW_BIN := rp2040_firmware.bin
 CB_UF2 := mch2022.uf2
 
 .PHONY: all firmware flash clean install_rules $(BUILD_DIR)

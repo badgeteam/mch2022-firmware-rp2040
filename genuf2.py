@@ -5,6 +5,8 @@ import sys, math, binascii
 def generateBlock(blockNumber, totalBlocks, familyId, flags, address, data):
     if len(data) > 476:
         raise ValueError
+    if (len(data) < 476):
+        data += bytes([0] * (476 - len(data))) # Add padding
     uf2 = bytes([])
     firstMagic = 0x0A324655
     uf2 += firstMagic.to_bytes(4, byteorder='little')
@@ -12,13 +14,11 @@ def generateBlock(blockNumber, totalBlocks, familyId, flags, address, data):
     uf2 += secondMagic.to_bytes(4, byteorder='little')
     uf2 += flags.to_bytes(4, byteorder='little')
     uf2 += address.to_bytes(4, byteorder='little')
-    uf2 += (256).to_bytes(4, byteorder='little')#len(data).to_bytes(4, byteorder='little')
+    uf2 += (256).to_bytes(4, byteorder='little')
     uf2 += blockNumber.to_bytes(4, byteorder='little')
     uf2 += totalBlocks.to_bytes(4, byteorder='little')
     uf2 += familyId.to_bytes(4, byteorder='little')
     uf2 += data
-    if (len(data) < 476):
-        uf2 += bytes([0] * (476 - len(data)))
     finalMagic = 0x0AB16F30
     uf2 += finalMagic.to_bytes(4, byteorder='little')
     return uf2
@@ -30,14 +30,12 @@ def flashPad(data):
 
 def genHeader(address, data):
     header  = address.to_bytes(4, byteorder='little')
-    header += (0x100100E9).to_bytes(4, byteorder='little')
     header += len(data).to_bytes(4, byteorder='little')
     crc     = binascii.crc32(data)
     header += crc.to_bytes(4, byteorder='little')
-    print("Flash address     : 0x{:08X}".format(address))
-    print("Entrypoint address: 0x{:08X}".format(0x100100E9))
-    print("Flash size        : 0x{:08X}".format(len(data)))
-    print("Flash CRC         : 0x{:08X}".format(crc))
+    print("Address     : 0x{:08X}".format(address))
+    print("Size        : 0x{:08X}".format(len(data)))
+    print("CRC         : 0x{:08X}".format(crc))
     return header
 
 def main():
