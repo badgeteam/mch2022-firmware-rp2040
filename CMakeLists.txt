@@ -70,6 +70,13 @@ add_executable(${NAME}
     i2c_peripheral.c
 )
 
+if (CMAKE_BUILD_TYPE STREQUAL "Debug")
+    message("Debug mode: using default panic handler")
+else ()
+    message("Release mode: using custom panic handler")
+    target_compile_definitions(${NAME} PUBLIC PICO_PANIC_FUNCTION=custom_panic)
+endif ()
+
 target_include_directories(${NAME} PUBLIC
         ${CMAKE_CURRENT_LIST_DIR})
 

@@ -13,6 +13,8 @@
 #include "hardware/uart.h"
 #include "hardware/irq.h"
 #include "hardware/pwm.h"
+#include "hardware/structs/watchdog.h"
+#include "hardware/watchdog.h"
 #include "tusb.h"
 #include "usb_descriptors.h"
 #include "uart_task.h"
@@ -21,6 +23,30 @@
 #include "lcd.h"
 #include "hardware/adc.h"
 #include "i2c_peripheral.h"
+
+#ifdef PICO_PANIC_FUNCTION
+    #define CRASH_INDICATION_MAGIC 0xFA174200
+
+    void __attribute__((noreturn)) __printflike(1, 0) custom_panic(const char *fmt, ...) {
+        hw_clear_bits(&watchdog_hw->ctrl, WATCHDOG_CTRL_ENABLE_BITS);
+        watchdog_hw->scratch[5] = CRASH_INDICATION_MAGIC;
+        watchdog_hw->scratch[6] = ~CRASH_INDICATION_MAGIC;
+        watchdog_reboot(0, 0, 0);
+        while (1) {
+            tight_loop_contents();
+            asm("");
+        }
+    }
+
+    void check_crashed() {
+        bool crashed = (watchdog_hw->scratch[5] == CRASH_INDICATION_MAGIC) && (watchdog_hw->scratch[6] == ~CRASH_INDICATION_MAGIC);
+        i2c_set_crash_debug_state(crashed, false);
+    }
+#else // Debug firmware has the default panic handler to allow for debugging
+    void check_crashed() {
+        i2c_set_crash_debug_state(false, true);
+    }
+#endif
 
 int main(void) {
     board_init();
@@ -41,8 +67,8 @@ int main(void) {
     lcd_init();
     
     setup_i2c_registers();
+    check_crashed(); // Populate the crash & debug state register
     setup_i2c_peripheral(I2C_SYSTEM, I2C_SYSTEM_SDA_PIN, I2C_SYSTEM_SCL_PIN, 0x17, 400000, i2c_slave_handler);
-    
     esp32_reset(false); // Reset ESP32 to normal mode
 
     while (1) {

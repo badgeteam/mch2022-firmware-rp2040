@@ -325,3 +325,7 @@ void i2c_set_webusb_mode(uint8_t mode) {
     webusb_mode = mode;
     //webusb_interrupt = true;
 }
+
+void i2c_set_crash_debug_state(bool crashed, bool debug) {
+    i2c_registers.registers[I2C_REGISTER_CRASH_DEBUG] = (crashed & 1) | ((debug << 1) & 2);
+}

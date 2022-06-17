@@ -19,6 +19,8 @@ void i2c_usb_set_suspended(bool suspended, bool remote_wakeup_en);
 
 void i2c_set_webusb_mode(uint8_t mode);
 
+void i2c_set_crash_debug_state(bool crashed, bool debug);
+
 enum {
     // 0-7
     I2C_REGISTER_FW_VER,
@@ -43,7 +45,7 @@ enum {
     // 16-23
     I2C_REGISTER_BL_TRIGGER,
     I2C_REGISTER_WEBUSB_MODE,
-    I2C_REGISTER_RESERVED1,
+    I2C_REGISTER_CRASH_DEBUG,
     I2C_REGISTER_RESERVED2,
     I2C_REGISTER_RESERVED3,
     I2C_REGISTER_CHARGING_STATE,
