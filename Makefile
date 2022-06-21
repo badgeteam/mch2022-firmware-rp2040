@@ -9,7 +9,7 @@ BL_BIN := rp2040_bootloader.bin
 FW_BIN := rp2040_firmware.bin
 CB_UF2 := mch2022.uf2
 
-.PHONY: all firmware flash clean install_rules $(BUILD_DIR)
+.PHONY: all firmware flash clean install_rules $(BUILD_DIR) format
 
 all: build flash
 	@echo "All tasks completed"
@@ -37,3 +37,6 @@ install_rules:
 	@echo "reload rules with:"
 	@echo "\tudevadm control --reload-rules"
 	@echo "\tudevadm trigger"
+
+format:
+	find . -iname '*.h' -o -iname '*.cpp' | xargs clang-format -i
