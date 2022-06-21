@@ -39,4 +39,4 @@ install_rules:
 	@echo "\tudevadm trigger"
 
 format:
-	find . -iname '*.h' -o -iname '*.cpp' | xargs clang-format -i
+	find . -iname '*.h' -o -iname '*.cpp' | grep -v '$(BUILD_DIR)' | xargs clang-format -i
