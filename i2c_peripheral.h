@@ -1,9 +1,9 @@
 #pragma once
 
-#include <stdint.h>
 #include <i2c_fifo.h>
 #include <i2c_slave.h>
 #include <pico/stdlib.h>
+#include <stdint.h>
 
 void setup_i2c_peripheral(i2c_inst_t *i2c, uint8_t sda_pin, uint8_t scl_pin, uint8_t address, uint32_t baudrate, i2c_slave_handler_t handler);
 
@@ -53,7 +53,7 @@ enum {
     I2C_REGISTER_ADC_VALUE_TEMP_HI,
 
     // 24-31
-    I2C_REGISTER_UID0, // Unique board identifier of the RP2040
+    I2C_REGISTER_UID0,  // Unique board identifier of the RP2040
     I2C_REGISTER_UID1,
     I2C_REGISTER_UID2,
     I2C_REGISTER_UID3,
@@ -63,7 +63,7 @@ enum {
     I2C_REGISTER_UID7,
 
     // 32-39
-    I2C_REGISTER_SCRATCH0, // Used by the ESP32 to store boot parameters, can also be read and written to from WebUSB
+    I2C_REGISTER_SCRATCH0,  // Used by the ESP32 to store boot parameters, can also be read and written to from WebUSB
     I2C_REGISTER_SCRATCH1,
     I2C_REGISTER_SCRATCH2,
     I2C_REGISTER_SCRATCH3,
@@ -73,7 +73,7 @@ enum {
     I2C_REGISTER_SCRATCH7,
 
     // 40-47
-    I2C_REGISTER_SCRATCH8, // Used by the ESP32 to store boot parameters, can also be read and written to from WebUSB
+    I2C_REGISTER_SCRATCH8,  // Used by the ESP32 to store boot parameters, can also be read and written to from WebUSB
     I2C_REGISTER_SCRATCH9,
     I2C_REGISTER_SCRATCH10,
     I2C_REGISTER_SCRATCH11,
@@ -83,7 +83,7 @@ enum {
     I2C_REGISTER_SCRATCH15,
 
     // 48-55
-    I2C_REGISTER_SCRATCH16, // Used by the ESP32 to store boot parameters, can also be read and written to from WebUSB
+    I2C_REGISTER_SCRATCH16,  // Used by the ESP32 to store boot parameters, can also be read and written to from WebUSB
     I2C_REGISTER_SCRATCH17,
     I2C_REGISTER_SCRATCH18,
     I2C_REGISTER_SCRATCH19,
@@ -93,7 +93,7 @@ enum {
     I2C_REGISTER_SCRATCH23,
 
     // 56-63
-    I2C_REGISTER_SCRATCH24, // Used by the ESP32 to store boot parameters, can also be read and written to from WebUSB
+    I2C_REGISTER_SCRATCH24,  // Used by the ESP32 to store boot parameters, can also be read and written to from WebUSB
     I2C_REGISTER_SCRATCH25,
     I2C_REGISTER_SCRATCH26,
     I2C_REGISTER_SCRATCH27,
@@ -103,7 +103,7 @@ enum {
     I2C_REGISTER_SCRATCH31,
 
     // 64-71
-    I2C_REGISTER_SCRATCH32, // Used by the ESP32 to store boot parameters, can also be read and written to from WebUSB
+    I2C_REGISTER_SCRATCH32,  // Used by the ESP32 to store boot parameters, can also be read and written to from WebUSB
     I2C_REGISTER_SCRATCH33,
     I2C_REGISTER_SCRATCH34,
     I2C_REGISTER_SCRATCH35,
@@ -113,7 +113,7 @@ enum {
     I2C_REGISTER_SCRATCH39,
 
     // 72-79
-    I2C_REGISTER_SCRATCH40, // Used by the ESP32 to store boot parameters, can also be read and written to from WebUSB
+    I2C_REGISTER_SCRATCH40,  // Used by the ESP32 to store boot parameters, can also be read and written to from WebUSB
     I2C_REGISTER_SCRATCH41,
     I2C_REGISTER_SCRATCH42,
     I2C_REGISTER_SCRATCH43,
@@ -123,7 +123,7 @@ enum {
     I2C_REGISTER_SCRATCH47,
 
     // 80-87
-    I2C_REGISTER_SCRATCH48, // Used by the ESP32 to store boot parameters, can also be read and written to from WebUSB
+    I2C_REGISTER_SCRATCH48,  // Used by the ESP32 to store boot parameters, can also be read and written to from WebUSB
     I2C_REGISTER_SCRATCH49,
     I2C_REGISTER_SCRATCH50,
     I2C_REGISTER_SCRATCH51,
@@ -133,7 +133,7 @@ enum {
     I2C_REGISTER_SCRATCH55,
 
     // 88-95
-    I2C_REGISTER_SCRATCH56, // Used by the ESP32 to store boot parameters, can also be read and written to from WebUSB
+    I2C_REGISTER_SCRATCH56,  // Used by the ESP32 to store boot parameters, can also be read and written to from WebUSB
     I2C_REGISTER_SCRATCH57,
     I2C_REGISTER_SCRATCH58,
     I2C_REGISTER_SCRATCH59,

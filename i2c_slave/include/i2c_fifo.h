@@ -20,29 +20,29 @@ extern "C" {
 
 /**
  * \brief Pop a byte from I2C Rx FIFO.
- * 
+ *
  * This function is non-blocking and assumes the Rx FIFO isn't empty.
- * 
+ *
  * \param i2c I2C instance.
  * \return uint8_t Byte value.
  */
 static inline uint8_t i2c_read_byte(i2c_inst_t *i2c) {
     i2c_hw_t *hw = i2c_get_hw(i2c);
-    assert(hw->status & I2C_IC_STATUS_RFNE_BITS); // Rx FIFO must not be empty
-    return (uint8_t)hw->data_cmd;
+    assert(hw->status & I2C_IC_STATUS_RFNE_BITS);  // Rx FIFO must not be empty
+    return (uint8_t) hw->data_cmd;
 }
 
 /**
  * \brief Push a byte into I2C Tx FIFO.
- * 
+ *
  * This function is non-blocking and assumes the Tx FIFO isn't full.
- * 
+ *
  * \param i2c I2C instance.
  * \param value Byte value.
  */
 static inline void i2c_write_byte(i2c_inst_t *i2c, uint8_t value) {
     i2c_hw_t *hw = i2c_get_hw(i2c);
-    assert(hw->status & I2C_IC_STATUS_TFNF_BITS); // Tx FIFO must not be full
+    assert(hw->status & I2C_IC_STATUS_TFNF_BITS);  // Tx FIFO must not be full
     hw->data_cmd = value;
 }
 
@@ -50,4 +50,4 @@ static inline void i2c_write_byte(i2c_inst_t *i2c, uint8_t value) {
 }
 #endif
 
-#endif // _I2C_FIFO_H_
+#endif  // _I2C_FIFO_H_

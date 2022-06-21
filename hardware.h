@@ -1,13 +1,13 @@
 #pragma once
 
 // UART0: connected to ESP32
-#define UART_ESP32 uart0
-#define UART_ESP32_TX_PIN 0
-#define UART_ESP32_RX_PIN 1
+#define UART_ESP32          uart0
+#define UART_ESP32_TX_PIN   0
+#define UART_ESP32_RX_PIN   1
 #define UART_ESP32_BAUDRATE 115200
 
 // I2C0: system I2C bus
-#define I2C_SYSTEM i2c1
+#define I2C_SYSTEM         i2c1
 #define I2C_SYSTEM_SDA_PIN 2
 #define I2C_SYSTEM_SCL_PIN 3
 
@@ -28,17 +28,17 @@
 #define FPGA_RESET 21
 
 // UART1: connected to ICE40 FPGA
-#define UART_FPGA uart1
-#define UART_FPGA_TX_PIN 24
-#define UART_FPGA_RX_PIN 25
+#define UART_FPGA          uart1
+#define UART_FPGA_TX_PIN   24
+#define UART_FPGA_RX_PIN   25
 #define UART_FPGA_BAUDRATE 9600
 
 // LCD control lines
 #define LCD_BACKLIGHT_PIN 15
 
 // ESP32 control lines
-#define ESP32_BL_PIN 12 // Output, high for normal boot, low for download boot, also serves as IRQ
-#define ESP32_EN_PIN 13 // Output, high to enable ESP32, low to reset ESP32
+#define ESP32_BL_PIN  12  // Output, high for normal boot, low for download boot, also serves as IRQ
+#define ESP32_EN_PIN  13  // Output, high to enable ESP32, low to reset ESP32
 #define ESP32_INT_PIN 14
 
 // Analog inputs
@@ -64,5 +64,5 @@
 
 // USB virtual device numbers
 #define USB_CDC_ESP32 0
-#define USB_CDC_FPGA 1
+#define USB_CDC_FPGA  1
 #define USB_CDC_STDIO 2
