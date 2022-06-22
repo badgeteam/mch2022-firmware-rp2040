@@ -49,7 +49,7 @@ openocd -f interface/picoprobe.cfg -f target/rp2040.cfg -s tcl
 ### Running GDB
 
 ```
-arm-none-eabi-gdb build/mch2022_firmware.elf
+arm-none-eabi-gdb build/rp2040_firmware.elf
 ```
 
 ### Connecting GDB to OpenOCD
