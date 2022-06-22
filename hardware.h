@@ -60,7 +60,8 @@
 #define SAO_IO1_PIN 19
 
 // IR LED
-#define IR_LED 27
+#define IR_PIN 27
+#define IR_PIO pio0
 
 // USB virtual device numbers
 #define USB_CDC_ESP32 0

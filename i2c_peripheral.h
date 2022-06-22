@@ -7,7 +7,7 @@
 
 void setup_i2c_peripheral(i2c_inst_t *i2c, uint8_t sda_pin, uint8_t scl_pin, uint8_t address, uint32_t baudrate, i2c_slave_handler_t handler);
 
-void setup_i2c_registers();
+void setup_i2c_registers(int param_ir_statemachine);
 
 void i2c_slave_handler(i2c_inst_t *i2c, i2c_slave_event_t event);
 void i2c_task();
@@ -143,10 +143,10 @@ enum {
     I2C_REGISTER_SCRATCH63,
 
     // 96-103
-    I2C_REGISTER_RESERVED7,
-    I2C_REGISTER_RESERVED8,
-    I2C_REGISTER_RESERVED9,
-    I2C_REGISTER_RESERVED10,
+    I2C_REGISTER_IR_ADDRESS_LO,
+    I2C_REGISTER_IR_ADDRESS_HI,
+    I2C_REGISTER_IR_COMMAND,
+    I2C_REGISTER_IR_TRIGGER,
     I2C_REGISTER_RESERVED11,
     I2C_REGISTER_RESERVED12,
     I2C_REGISTER_RESERVED13,

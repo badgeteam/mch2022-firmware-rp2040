@@ -21,6 +21,7 @@
 #include "uart_task.h"
 #include "pico/time.h"
 #include "hardware/adc.h"
+#include "nec_transmit.h"
 
 static bool interrupt_target = false;
 static bool interrupt_state = false;
@@ -32,6 +33,8 @@ static bool usb_rempote_wakeup_en = false;
 
 static uint8_t webusb_mode = 0;
 static bool webusb_interrupt = false;
+
+static int ir_statemachine = -1;
 
 struct {
     uint8_t registers[256];
@@ -80,13 +83,14 @@ void setup_i2c_peripheral(i2c_inst_t *i2c, uint8_t sda_pin, uint8_t scl_pin, uin
     i2c_slave_init(i2c, address, handler);
 }
 
-void setup_i2c_registers() {
+void setup_i2c_registers(int param_ir_statemachine) {
+    ir_statemachine = param_ir_statemachine;
     for (uint16_t reg = 0; reg < 256; reg++) {
         i2c_registers.registers[reg] = 0;
         i2c_registers.modified[reg] = false;
     }
 
-    i2c_registers.registers[I2C_REGISTER_FW_VER] = 0x05;
+    i2c_registers.registers[I2C_REGISTER_FW_VER] = 0x06;
 
     pico_unique_board_id_t id;
     pico_get_unique_board_id((pico_unique_board_id_t*) &i2c_registers.registers[I2C_REGISTER_UID0]);
@@ -207,6 +211,13 @@ void i2c_handle_register_write(uint8_t reg, uint8_t value) {
                         asm("");
                     }
                 }
+            break;
+        case I2C_REGISTER_IR_TRIGGER:
+            if (value == 0x01) {
+                uint16_t address = i2c_registers.registers[I2C_REGISTER_IR_ADDRESS_LO] + (i2c_registers.registers[I2C_REGISTER_IR_ADDRESS_HI] << 8);
+                uint16_t command = i2c_registers.registers[I2C_REGISTER_IR_COMMAND] + ((~i2c_registers.registers[I2C_REGISTER_IR_COMMAND]) << 8);
+                nec_tx_extended(IR_PIO, ir_statemachine, address, command);
+            }
             break;
         default:
             break;

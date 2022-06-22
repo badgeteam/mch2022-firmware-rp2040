@@ -23,6 +23,7 @@
 #include "lcd.h"
 #include "hardware/adc.h"
 #include "i2c_peripheral.h"
+#include "nec_transmit.h"
 
 #ifdef PICO_PANIC_FUNCTION
     #define CRASH_INDICATION_MAGIC 0xFA174200
@@ -52,21 +53,20 @@ int main(void) {
     board_init();
     tusb_init();
     setup_uart();
-    
+
     gpio_init(BATT_CHRG_PIN);
     gpio_set_dir(BATT_CHRG_PIN, false);
-    
+
     adc_init();
     adc_gpio_init(ANALOG_VBAT_PIN);
     adc_gpio_init(ANALOG_VUSB_PIN);
-    
-    gpio_init(IR_LED);
-    gpio_set_dir(IR_LED, true);
-    gpio_put(IR_LED, false);
-    
+
+    int ir_statemachine = nec_tx_init(IR_PIO, IR_PIN);
+    if (ir_statemachine < 0) panic("Failed to init IR");
+
     lcd_init();
-    
-    setup_i2c_registers();
+
+    setup_i2c_registers(ir_statemachine);
     check_crashed(); // Populate the crash & debug state register
     setup_i2c_peripheral(I2C_SYSTEM, I2C_SYSTEM_SDA_PIN, I2C_SYSTEM_SCL_PIN, 0x17, 400000, i2c_slave_handler);
     esp32_reset(false); // Reset ESP32 to normal mode

@@ -60,6 +60,9 @@ else ()
     pico_enable_stdio_usb(${BOOTLOADER} 1)
 endif ()
 
+# NEC infrared library
+add_subdirectory(nec_transmit)
+
 # Firmware
 add_executable(${NAME}
     main.c
@@ -93,6 +96,7 @@ target_link_libraries(${NAME}
     tinyusb_device
     tinyusb_board
     cmsis_core
+    nec_transmit
 )
 
 pico_add_extra_outputs(${NAME})
