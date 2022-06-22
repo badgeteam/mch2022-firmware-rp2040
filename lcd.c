@@ -4,19 +4,20 @@
  * SPDX-License-Identifier: MIT
  */
 
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
-#include "pico/stdlib.h"
-#include "bsp/board.h"
-#include "hardware/pwm.h"
-#include "hardware.h"
-
 #include "lcd.h"
 
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#include "bsp/board.h"
+#include "hardware.h"
+#include "hardware/pwm.h"
+#include "pico/stdlib.h"
+
 uint32_t pwm_set_freq_duty(uint slice_num, uint chan, uint32_t freq, int duty) {
-    uint32_t clock = 125000000;
-    uint32_t divider16 = clock / freq / 4096 +  (clock % (freq * 4096) != 0);
+    uint32_t clock     = 125000000;
+    uint32_t divider16 = clock / freq / 4096 + (clock % (freq * 4096) != 0);
     if (divider16 / 16 == 0) {
         divider16 = 16;
     }
@@ -33,7 +34,7 @@ void lcd_init() {
     gpio_put(LCD_BACKLIGHT_PIN, false);
     gpio_set_function(LCD_BACKLIGHT_PIN, GPIO_FUNC_PWM);
     uint slice_num = pwm_gpio_to_slice_num(LCD_BACKLIGHT_PIN);
-    uint chan = pwm_gpio_to_channel(LCD_BACKLIGHT_PIN);
+    uint chan      = pwm_gpio_to_channel(LCD_BACKLIGHT_PIN);
     pwm_set_freq_duty(slice_num, chan, 200, 0);
     pwm_set_enabled(slice_num, true);
     lcd_backlight(255);
@@ -41,6 +42,6 @@ void lcd_init() {
 
 void lcd_backlight(uint8_t value) {
     uint slice_num = pwm_gpio_to_slice_num(LCD_BACKLIGHT_PIN);
-    uint chan = pwm_gpio_to_channel(LCD_BACKLIGHT_PIN);
+    uint chan      = pwm_gpio_to_channel(LCD_BACKLIGHT_PIN);
     pwm_set_freq_duty(slice_num, chan, 200, value);
 }
