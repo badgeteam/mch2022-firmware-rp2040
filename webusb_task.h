@@ -1,5 +1,10 @@
 #pragma once
 
+#include <stdbool.h>
+#include <stdint.h>
+
+#include "tusb.h"
+
 #define WEBUSB_IDX_ESP32 0
 #define WEBUSB_IDX_FPGA  1
 
