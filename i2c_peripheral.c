@@ -92,7 +92,7 @@ void setup_i2c_registers(int param_ir_statemachine) {
         i2c_registers.modified[reg]  = false;
     }
 
-    i2c_registers.registers[I2C_REGISTER_FW_VER] = 0x06;
+    i2c_registers.registers[I2C_REGISTER_FW_VER] = 0x07;
 
     pico_unique_board_id_t id;
     pico_get_unique_board_id((pico_unique_board_id_t*) &i2c_registers.registers[I2C_REGISTER_UID0]);
