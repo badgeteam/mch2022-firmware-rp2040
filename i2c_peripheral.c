@@ -27,7 +27,7 @@
 
 static bool interrupt_target = false;
 static bool interrupt_state  = false;
-static bool interruptCleared = false;
+static bool interrupt_clear  = false;
 
 static bool usb_mounted           = false;
 static bool usb_suspended         = false;
@@ -159,7 +159,7 @@ void __not_in_flash_func(i2c_slave_handler)(i2c_inst_t* i2c, i2c_slave_event_t e
             i2c_write_byte(i2c, i2c_registers.registers[i2c_registers.address]);
             if (i2c_registers.address == I2C_REGISTER_INTERRUPT2) {
                 interrupt_target                                 = false;
-                interruptCleared                                 = true;
+                interrupt_clear                                  = true;
                 i2c_registers.registers[I2C_REGISTER_INTERRUPT1] = 0;
                 i2c_registers.registers[I2C_REGISTER_INTERRUPT2] = 0;
             }
@@ -229,6 +229,22 @@ void i2c_handle_register_write(uint8_t reg, uint8_t value) {
 void i2c_task() {
     bool busy = i2c_slave_transfer_in_progress(I2C_SYSTEM);
     if (!busy) {
+        // Deal with IRQ first
+        if (interrupt_clear) {
+            gpio_set_dir(ESP32_INT_PIN, false); // Input, pin has pull-up, idle state
+            interrupt_state = false;
+            interrupt_clear = false;
+        } else if (interrupt_target != interrupt_state) {
+            interrupt_state = interrupt_target;
+            if (interrupt_target) {
+                gpio_set_dir(ESP32_INT_PIN, true); // Output, low, trigger interrupt on ESP32
+                gpio_put(ESP32_INT_PIN, false);
+            } else {
+                gpio_set_dir(ESP32_INT_PIN, false); // Input, pin has pull-up, idle state
+            }
+        }
+
+        // Dispatch register writes
         for (uint16_t reg = 0; reg < 256; reg++) {
             if (i2c_registers.modified[reg]) {
                 i2c_handle_register_write(reg, i2c_registers.registers[reg]);
@@ -269,20 +285,6 @@ void i2c_task() {
         if (input2_value != i2c_registers.registers[I2C_REGISTER_INPUT2]) interrupt_target = true;
         i2c_registers.registers[I2C_REGISTER_INTERRUPT2] |= (input2_value ^ i2c_registers.registers[I2C_REGISTER_INPUT2]);
         i2c_registers.registers[I2C_REGISTER_INPUT2] = input2_value;
-
-        if (interruptCleared) {
-            gpio_set_dir(ESP32_INT_PIN, false);  // Input, pin has pull-up, idle state
-            interrupt_state  = !interrupt_target;
-            interruptCleared = false;
-        } else if (interrupt_target != interrupt_state) {
-            interrupt_state = interrupt_target;
-            if (interrupt_target) {
-                gpio_set_dir(ESP32_INT_PIN, true);  // Output, low, trigger interrupt on ESP32
-                gpio_put(ESP32_INT_PIN, false);
-            } else {
-                gpio_set_dir(ESP32_INT_PIN, false);  // Input, pin has pull-up, idle state
-            }
-        }
 
         absolute_time_t now = get_absolute_time();
 #ifdef NDEBUG
