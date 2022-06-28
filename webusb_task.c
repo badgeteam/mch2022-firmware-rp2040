@@ -66,7 +66,7 @@ void webusb_task() {
     }
 }
 
-#define WEBUSB_LANDING_PAGE_URL "mch2022.bodge.team"
+#define WEBUSB_LANDING_PAGE_URL "mch2022.badge.team"
 
 tusb_desc_webusb_url_t desc_url = {.bLength         = 3 + sizeof(WEBUSB_LANDING_PAGE_URL) - 1,
                                    .bDescriptorType = 3,  // WEBUSB URL type
