@@ -14,6 +14,8 @@
 #include "uart_task.h"
 #include "usb_descriptors.h"
 
+#include "version.h"
+
 uint16_t webusb_status[CFG_TUD_VENDOR]         = {0x0000};
 bool     webusb_status_changed[CFG_TUD_VENDOR] = {false};
 
@@ -144,6 +146,16 @@ bool tud_vendor_control_xfer_cb(uint8_t rhport, uint8_t stage, tusb_control_requ
                         return tud_control_status(rhport, request);
                     }
                 }
+                if (request->bRequest == 0x26) {  // Get mode
+                    if (request->wIndex == ITF_NUM_VENDOR_0) {
+                        return tud_control_xfer(rhport, request, (void*) &webusb_esp32_mode_change_target, 1);
+                    }
+                }
+                if (request->bRequest == 0x27) {  // Get firmware version
+                    uint8_t version = FW_VERSION;
+                    return tud_control_xfer(rhport, request, (void*) &version, 1);
+                }
+
                 break;
             }
         default:

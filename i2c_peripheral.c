@@ -25,6 +25,8 @@
 #include "pico/unique_id.h"
 #include "uart_task.h"
 
+#include "version.h"
+
 static bool interrupt_target = false;
 static bool interrupt_state  = false;
 static bool interrupt_clear  = false;
@@ -92,7 +94,7 @@ void setup_i2c_registers(int param_ir_statemachine) {
         i2c_registers.modified[reg]  = false;
     }
 
-    i2c_registers.registers[I2C_REGISTER_FW_VER] = 0x07;
+    i2c_registers.registers[I2C_REGISTER_FW_VER] = FW_VERSION;
 
     pico_unique_board_id_t id;
     pico_get_unique_board_id((pico_unique_board_id_t*) &i2c_registers.registers[I2C_REGISTER_UID0]);
