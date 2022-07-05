@@ -40,24 +40,24 @@ static bool    webusb_interrupt = false;
 
 static int ir_statemachine = -1;
 
-struct {
+static struct {
     uint8_t registers[256];
     bool    modified[256];
     uint8_t address;
     bool    write_in_progress;
 } i2c_registers;
 
-uint8_t i2c_controlled_gpios[] = {SAO_IO0_PIN, SAO_IO1_PIN, PROTO_0_PIN, PROTO_1_PIN};
-uint8_t input1_gpios[]         = {BUTTON_HOME, BUTTON_MENU, BUTTON_START, BUTTON_ACCEPT, BUTTON_BACK, FPGA_CDONE};
-uint8_t input2_gpios[]         = {BUTTON_JOY_A, BUTTON_JOY_B, BUTTON_JOY_C, BUTTON_JOY_D, BUTTON_JOY_E};
+static const uint8_t i2c_controlled_gpios[] = {SAO_IO0_PIN, SAO_IO1_PIN, PROTO_0_PIN, PROTO_1_PIN};
+static const uint8_t input1_gpios[]         = {BUTTON_HOME, BUTTON_MENU, BUTTON_START, BUTTON_ACCEPT, BUTTON_BACK, FPGA_CDONE};
+static const uint8_t input2_gpios[]         = {BUTTON_JOY_A, BUTTON_JOY_B, BUTTON_JOY_C, BUTTON_JOY_D, BUTTON_JOY_E};
 
 static absolute_time_t next_adc_read;
-uint8_t                next_adc_channel;
+static uint8_t         next_adc_channel;
 
-const bool i2c_registers_read_only[256] = {
+static const bool i2c_registers_read_only[256] = {
     true,  false, true,  false, false, false, true,  true,   // 0-7
     true,  true,  false, true,  true,  true,  true,  true,   // 8-15
-    false, false, false, false, false, false, false, false,  // 16-23
+    false, false, true,  false, false, true,  true,  true,   // 16-23
     true,  true,  true,  true,  true,  true,  true,  true,   // 24-31
     false, false, false, false, false, false, false, false,  // 32-39
     false, false, false, false, false, false, false, false,  // 40-47
@@ -342,3 +342,11 @@ void i2c_set_webusb_mode(uint8_t mode) {
 }
 
 void i2c_set_crash_debug_state(bool crashed, bool debug) { i2c_registers.registers[I2C_REGISTER_CRASH_DEBUG] = (crashed & 1) | ((debug << 1) & 2); }
+
+void i2c_set_reset_attempted(bool attempted) {
+    i2c_registers.registers[I2C_REGISTER_RESET_ATTEMPTED] = attempted;
+}
+
+bool i2c_get_reset_allowed() {
+    return !i2c_registers.registers[I2C_REGISTER_RESET_LOCK];
+}

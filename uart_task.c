@@ -304,7 +304,12 @@ void tud_cdc_line_state_cb(uint8_t itf, bool dtr, bool rts) {
             if ((esp32_reset_state == 1) && (dtr2) && (!rts2)) esp32_reset_state = 2;
             if ((esp32_reset_state == 2) && (!dtr2) && (rts2)) esp32_reset_state = 3;
             if ((esp32_reset_state == 3) && (dtr2) && (rts2)) {
-                esp32_reset(true);
+                if (i2c_get_reset_allowed()) {
+                    esp32_reset(true);
+                } else {
+                    i2c_set_reset_attempted(true);
+                    esp32_reset(false);
+                }
             }
 
             if ((esp32_reset_app_state == 0) && ((!dtr2) && rts2)) esp32_reset_app_state = 1;
