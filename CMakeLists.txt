@@ -9,6 +9,9 @@ set(BOOTLOADER rp2040_bootloader)
 # Board type
 set(PICO_BOARD none)
 
+# Fixes that allow some MCH2022 badges with a slowly starting oscillator to boot properly
+add_compile_definitions(PICO_BOOT_STAGE2_CHOOSE_GENERIC_03H=1 PICO_XOSC_STARTUP_DELAY_MULTIPLIER=64)
+
 # SDK
 include($ENV{PICO_SDK_PATH}/pico_sdk_init.cmake)
 
