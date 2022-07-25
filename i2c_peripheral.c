@@ -27,6 +27,8 @@
 
 #include "version.h"
 
+#include "ws2812.h"
+
 static bool interrupt_target = false;
 static bool interrupt_state  = false;
 static bool interrupt_clear  = false;
@@ -223,6 +225,27 @@ void i2c_handle_register_write(uint8_t reg, uint8_t value) {
                 nec_tx_extended(IR_PIO, ir_statemachine, address, command);
             }
             break;
+        case I2C_REGISTER_WS2812_MODE:
+            switch (value) {
+                case 0x01: // 24-bit (RGB) mode
+                    ws2812_enable(false);
+                    break;
+                case 0x02: // 32-bit (RGBW) mode
+                    ws2812_enable(true);
+                case 0x00:
+                default:
+                    ws2812_disable();
+            }
+            break;
+        case I2C_REGISTER_WS2812_TRIGGER: {
+            uint8_t length = i2c_registers.registers[I2C_REGISTER_WS2812_LENGTH];
+            if (length > 10) length = 10;
+            for (uint8_t i = 0; i < length; i++) {
+                uint32_t* value = (uint32_t*) &i2c_registers.registers[I2C_REGISTER_WS2812_LED0_DATA0 + (i*4)];
+                ws2812_put(*value);
+            }
+            break;
+        }
         default:
             break;
     };

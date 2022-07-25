@@ -1,3 +1,3 @@
 #pragma once
 
-#define FW_VERSION 0x08
+#define FW_VERSION 0x09

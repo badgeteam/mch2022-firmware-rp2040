@@ -4,6 +4,7 @@
 
 INSTALL_PREFIX := $PWD
 BUILD_DIR := build
+GENERATED_DIR := generated
 
 BL_BIN := rp2040_bootloader.bin
 FW_BIN := rp2040_firmware.bin
@@ -16,12 +17,14 @@ all: build flash
 
 build:
 	mkdir -p $(BUILD_DIR)
+	mkdir -p $(GENERATED_DIR)
 	cd $(BUILD_DIR); cmake -DCMAKE_INSTALL_PREFIX=$INSTALL_PREFIX -DCMAKE_BUILD_TYPE=Release ..
 	$(MAKE) -C $(BUILD_DIR) --no-print-directory all
 	python3 genuf2.py $(BUILD_DIR)/$(BL_BIN) $(BUILD_DIR)/$(FW_BIN) $(BUILD_DIR)/$(CB_UF2)
 
 debug:
 	mkdir -p $(BUILD_DIR)
+	mkdir -p $(GENERATED_DIR)
 	cd $(BUILD_DIR); cmake -DCMAKE_INSTALL_PREFIX=$INSTALL_PREFIX -DCMAKE_BUILD_TYPE=Debug ..
 	$(MAKE) -C $(BUILD_DIR) --no-print-directory all
 
@@ -31,6 +34,7 @@ flash:
 
 clean:
 	rm -rf $(BUILD_DIR)
+	rm -rf $(GENERATED_DIR)
 
 install_rules:
 	cp tools/99-pico.rules /etc/udev/rules.d/

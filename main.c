@@ -25,6 +25,7 @@
 #include "uart_task.h"
 #include "usb_descriptors.h"
 #include "webusb_task.h"
+#include "ws2812.h"
 
 #ifdef PICO_PANIC_FUNCTION
 #define CRASH_INDICATION_MAGIC 0xFA174200
@@ -69,6 +70,8 @@ int main(void) {
     check_crashed();  // Populate the crash & debug state register
     setup_i2c_peripheral(I2C_SYSTEM, I2C_SYSTEM_SDA_PIN, I2C_SYSTEM_SCL_PIN, 0x17, 400000, i2c_slave_handler);
     esp32_reset(false);  // Reset ESP32 to normal mode
+    
+    ws2812_setup();
 
     while (1) {
         tud_task();

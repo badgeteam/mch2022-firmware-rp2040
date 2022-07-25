@@ -74,7 +74,10 @@ add_executable(${NAME}
     webusb_task.c
     lcd.c
     i2c_peripheral.c
+    ws2812.c
 )
+
+pico_generate_pio_header(${NAME} ${CMAKE_CURRENT_LIST_DIR}/ws2812.pio OUTPUT_DIR ${CMAKE_CURRENT_LIST_DIR}/generated)
 
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
     message("Debug mode: using default panic handler")

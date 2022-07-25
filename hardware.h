@@ -63,6 +63,9 @@
 #define IR_PIN 27
 #define IR_PIO pio0
 
+// SAO WS2812
+#define WS2812_PIO pio1
+
 // USB virtual device numbers
 #define USB_CDC_ESP32 0
 #define USB_CDC_FPGA  1
