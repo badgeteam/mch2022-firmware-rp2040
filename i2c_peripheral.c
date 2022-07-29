@@ -24,9 +24,7 @@
 #include "pico/time.h"
 #include "pico/unique_id.h"
 #include "uart_task.h"
-
 #include "version.h"
-
 #include "ws2812.h"
 
 static bool interrupt_target = false;
@@ -133,9 +131,12 @@ void setup_i2c_registers(int param_ir_statemachine) {
 
     gpio_init(BATT_CHRG_PIN);
     gpio_set_dir(BATT_CHRG_PIN, false);
+    gpio_pull_up(BATT_CHRG_PIN);
 
     next_adc_read    = get_absolute_time();
     next_adc_channel = 0;
+
+    adc_set_temp_sensor_enabled(true);
 }
 
 void i2c_register_write(uint8_t reg, uint8_t value) {
@@ -227,25 +228,26 @@ void i2c_handle_register_write(uint8_t reg, uint8_t value) {
             break;
         case I2C_REGISTER_WS2812_MODE:
             switch (value) {
-                case 0x01: // 24-bit (RGB) mode
+                case 0x01:  // 24-bit (RGB) mode
                     ws2812_enable(false);
                     break;
-                case 0x02: // 32-bit (RGBW) mode
+                case 0x02:  // 32-bit (RGBW) mode
                     ws2812_enable(true);
                 case 0x00:
                 default:
                     ws2812_disable();
             }
             break;
-        case I2C_REGISTER_WS2812_TRIGGER: {
-            uint8_t length = i2c_registers.registers[I2C_REGISTER_WS2812_LENGTH];
-            if (length > 10) length = 10;
-            for (uint8_t i = 0; i < length; i++) {
-                uint32_t* value = (uint32_t*) &i2c_registers.registers[I2C_REGISTER_WS2812_LED0_DATA0 + (i*4)];
-                ws2812_put(*value);
+        case I2C_REGISTER_WS2812_TRIGGER:
+            {
+                uint8_t length = i2c_registers.registers[I2C_REGISTER_WS2812_LENGTH];
+                if (length > 10) length = 10;
+                for (uint8_t i = 0; i < length; i++) {
+                    uint32_t* value = (uint32_t*) &i2c_registers.registers[I2C_REGISTER_WS2812_LED0_DATA0 + (i * 4)];
+                    ws2812_put(*value);
+                }
+                break;
             }
-            break;
-        }
         default:
             break;
     };
@@ -256,16 +258,16 @@ void i2c_task() {
     if (!busy) {
         // Deal with IRQ first
         if (interrupt_clear) {
-            gpio_set_dir(ESP32_INT_PIN, false); // Input, pin has pull-up, idle state
+            gpio_set_dir(ESP32_INT_PIN, false);  // Input, pin has pull-up, idle state
             interrupt_state = false;
             interrupt_clear = false;
         } else if (interrupt_target != interrupt_state) {
             interrupt_state = interrupt_target;
             if (interrupt_target) {
-                gpio_set_dir(ESP32_INT_PIN, true); // Output, low, trigger interrupt on ESP32
+                gpio_set_dir(ESP32_INT_PIN, true);  // Output, low, trigger interrupt on ESP32
                 gpio_put(ESP32_INT_PIN, false);
             } else {
-                gpio_set_dir(ESP32_INT_PIN, false); // Input, pin has pull-up, idle state
+                gpio_set_dir(ESP32_INT_PIN, false);  // Input, pin has pull-up, idle state
             }
         }
 
@@ -319,7 +321,7 @@ void i2c_task() {
 #endif
             next_adc_read = delayed_by_ms(now, 250);
 
-            i2c_registers.registers[I2C_REGISTER_CHARGING_STATE] = gpio_get(BATT_CHRG_PIN);
+            i2c_registers.registers[I2C_REGISTER_CHARGING_STATE] = !gpio_get(BATT_CHRG_PIN);
 
             switch (next_adc_channel) {
                 case 0:
@@ -366,10 +368,6 @@ void i2c_set_webusb_mode(uint8_t mode) {
 
 void i2c_set_crash_debug_state(bool crashed, bool debug) { i2c_registers.registers[I2C_REGISTER_CRASH_DEBUG] = (crashed & 1) | ((debug << 1) & 2); }
 
-void i2c_set_reset_attempted(bool attempted) {
-    i2c_registers.registers[I2C_REGISTER_RESET_ATTEMPTED] = attempted;
-}
+void i2c_set_reset_attempted(bool attempted) { i2c_registers.registers[I2C_REGISTER_RESET_ATTEMPTED] = attempted; }
 
-bool i2c_get_reset_allowed() {
-    return !i2c_registers.registers[I2C_REGISTER_RESET_LOCK];
-}
+bool i2c_get_reset_allowed() { return !i2c_registers.registers[I2C_REGISTER_RESET_LOCK]; }

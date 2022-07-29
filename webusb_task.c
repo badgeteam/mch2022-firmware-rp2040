@@ -13,7 +13,6 @@
 #include "tusb.h"
 #include "uart_task.h"
 #include "usb_descriptors.h"
-
 #include "version.h"
 
 uint16_t webusb_status[CFG_TUD_VENDOR]         = {0x0000};
