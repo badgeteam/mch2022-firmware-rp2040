@@ -51,6 +51,7 @@ static const uint8_t i2c_controlled_gpios[] = {SAO_IO0_PIN, SAO_IO1_PIN, PROTO_0
 static const uint8_t input1_gpios[]         = {BUTTON_HOME, BUTTON_MENU, BUTTON_START, BUTTON_ACCEPT, BUTTON_BACK, FPGA_CDONE};
 static const uint8_t input2_gpios[]         = {BUTTON_JOY_A, BUTTON_JOY_B, BUTTON_JOY_C, BUTTON_JOY_D, BUTTON_JOY_E};
 
+static absolute_time_t next_button_poll;
 static absolute_time_t next_adc_read;
 static uint8_t         next_adc_channel;
 
@@ -132,6 +133,8 @@ void setup_i2c_registers(int param_ir_statemachine) {
     gpio_init(BATT_CHRG_PIN);
     gpio_set_dir(BATT_CHRG_PIN, false);
     gpio_pull_up(BATT_CHRG_PIN);
+
+    next_button_poll = get_absolute_time();
 
     next_adc_read    = get_absolute_time();
     next_adc_channel = 0;
@@ -295,25 +298,34 @@ void i2c_task() {
             gpio_in_value |= gpio_get(i2c_controlled_gpios[index]) << index;
         }
 
-        // Read inputs
-        uint8_t input1_value = 0;
-        for (uint8_t index = 0; index < sizeof(input1_gpios); index++) {
-            input1_value |= (!gpio_get(input1_gpios[index])) << index;
-        }
-        input1_value |= board_button_read() << 7;  // Select button
-        if (input1_value != i2c_registers.registers[I2C_REGISTER_INPUT1]) interrupt_target = true;
-        i2c_registers.registers[I2C_REGISTER_INTERRUPT1] |= (input1_value ^ i2c_registers.registers[I2C_REGISTER_INPUT1]);
-        i2c_registers.registers[I2C_REGISTER_INPUT1] = input1_value;
-
-        uint8_t input2_value = 0;
-        for (uint8_t index = 0; index < sizeof(input2_gpios); index++) {
-            input2_value |= (!gpio_get(input2_gpios[index])) << index;
-        }
-        if (input2_value != i2c_registers.registers[I2C_REGISTER_INPUT2]) interrupt_target = true;
-        i2c_registers.registers[I2C_REGISTER_INTERRUPT2] |= (input2_value ^ i2c_registers.registers[I2C_REGISTER_INPUT2]);
-        i2c_registers.registers[I2C_REGISTER_INPUT2] = input2_value;
-
         absolute_time_t now = get_absolute_time();
+
+#ifdef NDEBUG
+        if (now > next_button_poll) {
+#else
+        if (now._private_us_since_boot > next_button_poll._private_us_since_boot) {
+#endif
+            next_button_poll = delayed_by_ms(now, 30);
+
+            // Read inputs
+            uint8_t input1_value = 0;
+            for (uint8_t index = 0; index < sizeof(input1_gpios); index++) {
+                input1_value |= (!gpio_get(input1_gpios[index])) << index;
+            }
+            input1_value |= board_button_read() << 7;  // Select button
+            if (input1_value != i2c_registers.registers[I2C_REGISTER_INPUT1]) interrupt_target = true;
+            i2c_registers.registers[I2C_REGISTER_INTERRUPT1] |= (input1_value ^ i2c_registers.registers[I2C_REGISTER_INPUT1]);
+            i2c_registers.registers[I2C_REGISTER_INPUT1] = input1_value;
+
+            uint8_t input2_value = 0;
+            for (uint8_t index = 0; index < sizeof(input2_gpios); index++) {
+                input2_value |= (!gpio_get(input2_gpios[index])) << index;
+            }
+            if (input2_value != i2c_registers.registers[I2C_REGISTER_INPUT2]) interrupt_target = true;
+            i2c_registers.registers[I2C_REGISTER_INTERRUPT2] |= (input2_value ^ i2c_registers.registers[I2C_REGISTER_INPUT2]);
+            i2c_registers.registers[I2C_REGISTER_INPUT2] = input2_value;
+        }
+
 #ifdef NDEBUG
         if (now > next_adc_read) {  // Once every 250ms
 #else
