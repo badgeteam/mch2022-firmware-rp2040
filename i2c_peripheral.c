@@ -324,6 +324,13 @@ void i2c_task() {
             if (input2_value != i2c_registers.registers[I2C_REGISTER_INPUT2]) interrupt_target = true;
             i2c_registers.registers[I2C_REGISTER_INTERRUPT2] |= (input2_value ^ i2c_registers.registers[I2C_REGISTER_INPUT2]);
             i2c_registers.registers[I2C_REGISTER_INPUT2] = input2_value;
+        } else {
+            // The CDONE pin is part of the input register but should not be polled slowly, so if we're not polling the other buttons just read the FPGA cdone pin and update the register
+            if (!gpio_get(FPGA_CDONE)) {
+                i2c_registers.registers[I2C_REGISTER_INPUT1] |= 1 << 5;
+            } else {
+                i2c_registers.registers[I2C_REGISTER_INPUT1] &= ~(1 << 5);
+            }
         }
 
 #ifdef NDEBUG
