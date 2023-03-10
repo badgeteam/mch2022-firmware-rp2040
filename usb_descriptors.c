@@ -21,6 +21,7 @@ char const* string_desc_arr[] = {
     "FPGA console",              // 4: CDC Interface
     "WebUSB ESP32 console",      // 5: WebUSB interface
     "WebUSB FPGA console",       // 6: WebUSB interface
+    "Mass storage"               // 7: Mass storage interface
 };
 
 enum {
@@ -31,6 +32,7 @@ enum {
     STRING_DESC_CDC_1,
     STRING_DESC_VENDOR_0,
     STRING_DESC_VENDOR_1,
+    STRING_DESC_MSC,
     STRING_DESC_SERIAL  // (Not in the string description array)
 };
 
@@ -98,7 +100,7 @@ uint8_t const* tud_descriptor_device_cb(void) { return (uint8_t const*) &desc_de
 
 // Configuration Descriptor
 
-#define CONFIG_TOTAL_LEN (TUD_CONFIG_DESC_LEN + CFG_TUD_CDC * TUD_CDC_DESC_LEN + CFG_TUD_VENDOR * TUD_VENDOR_DESC_LEN)
+#define CONFIG_TOTAL_LEN (TUD_CONFIG_DESC_LEN + CFG_TUD_CDC * TUD_CDC_DESC_LEN + CFG_TUD_VENDOR * TUD_VENDOR_DESC_LEN + CFG_TUD_MSC * TUD_MSC_DESC_LEN)
 
 #define EPNUM_CDC_0_NOTIF 0x81  // Endpoint 1: CDC serial port for ESP32 console, control
 #define EPNUM_CDC_0_OUT   0x02  // Endpoint 2: CDC serial port for ESP32 console, data
@@ -110,8 +112,12 @@ uint8_t const* tud_descriptor_device_cb(void) { return (uint8_t const*) &desc_de
 
 #define EPNUM_VENDOR_0_OUT 0x05  // Endpoint 5: WebUSB
 #define EPNUM_VENDOR_0_IN  0x85
+
 #define EPNUM_VENDOR_1_OUT 0x06  // Endpoint 6: WebUSB
 #define EPNUM_VENDOR_1_IN  0x86
+
+#define EPNUM_MSC_OUT 0x07  // Endpoint 7: Mass storage
+#define EPNUM_MSC_IN  0x87
 
 uint8_t const desc_fs_configuration[] = {
     // Config number, interface count, string index, total length, attribute, power in mA
@@ -127,6 +133,8 @@ uint8_t const desc_fs_configuration[] = {
     TUD_VENDOR_DESCRIPTOR(ITF_NUM_VENDOR_0, STRING_DESC_VENDOR_0, EPNUM_VENDOR_0_OUT, EPNUM_VENDOR_0_IN, 32),
     TUD_VENDOR_DESCRIPTOR(ITF_NUM_VENDOR_1, STRING_DESC_VENDOR_1, EPNUM_VENDOR_1_OUT, EPNUM_VENDOR_1_IN, 32),
 
+    // MSC: Interface number, string index, EP Out & EP In address, EP size
+    TUD_MSC_DESCRIPTOR(ITF_NUM_MSC, STRING_DESC_MSC, EPNUM_MSC_OUT, EPNUM_MSC_IN, 64),
 };
 
 uint8_t const* tud_descriptor_configuration_cb(uint8_t index) {

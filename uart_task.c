@@ -32,11 +32,13 @@ absolute_time_t esp32_reset_timeout = 0;
 absolute_time_t esp32_reset_timeout = {._private_us_since_boot = 0};
 #endif
 bool fpga_loopback_active = false;
+bool esp32_msc_active = false;
 
 cdc_line_coding_t current_line_coding[2];
 cdc_line_coding_t cdc_requested_line_coding[2];
 cdc_line_coding_t webusb_requested_line_coding[2];
 cdc_line_coding_t fpga_loopback_requested_line_coding;
+cdc_line_coding_t msc_requested_line_coding;
 
 void setup_uart() {
     gpio_init(ESP32_BL_PIN);
@@ -75,6 +77,11 @@ void setup_uart() {
     fpga_loopback_requested_line_coding.data_bits = 8;
     fpga_loopback_requested_line_coding.parity    = 0;
     fpga_loopback_requested_line_coding.stop_bits = 1;
+    
+    msc_requested_line_coding.bit_rate  = 2000000;
+    msc_requested_line_coding.data_bits = 8;
+    msc_requested_line_coding.parity    = 0;
+    msc_requested_line_coding.stop_bits = 1;
 }
 
 void cdc_send(uint8_t itf, uint8_t* buf, uint32_t count) {
@@ -160,6 +167,8 @@ void apply_line_coding(uint8_t itf) {
 
     if ((itf == USB_CDC_FPGA) && (fpga_loopback_active)) {  // If FPGA loopback is active the loopback settings take priority
         target_line_coding = &fpga_loopback_requested_line_coding;
+    } else if ((itf == USB_CDC_ESP32) && (esp32_msc_active)) { // If ESP32 mass storage is active the mass storage settings take priority
+        target_line_coding = &msc_requested_line_coding;
     } else if (get_webusb_connected(webusb_index)) {  // If WebUSB is connected WebUSB controls the settings
         target_line_coding = &webusb_requested_line_coding[itf];
     } else {  // And if WebUSB is not connected the settings are controlled by the CDC interface
@@ -192,17 +201,19 @@ void uart_task(void) {
     apply_line_coding(USB_CDC_ESP32);
     apply_line_coding(USB_CDC_FPGA);
 
-    length = 0;
-    while (uart_is_readable(UART_ESP32) && (length < sizeof(buffer))) {
-        buffer[length] = uart_getc(UART_ESP32);
-        length++;
-    }
+    if (!esp32_msc_active) {
+        length = 0;
+        while (uart_is_readable(UART_ESP32) && (length < sizeof(buffer))) {
+            buffer[length] = uart_getc(UART_ESP32);
+            length++;
+        }
 
-    if (length > 0) {
-        if (get_webusb_connected(WEBUSB_IDX_ESP32)) {
-            tud_vendor_n_write(WEBUSB_IDX_ESP32, buffer, length);
-        } else {
-            cdc_send(0, buffer, length);
+        if (length > 0) {
+            if (get_webusb_connected(WEBUSB_IDX_ESP32)) {
+                tud_vendor_n_write(WEBUSB_IDX_ESP32, buffer, length);
+            } else {
+                cdc_send(0, buffer, length);
+            }
         }
     }
 
@@ -227,9 +238,11 @@ void uart_task(void) {
         }
     }
 
-    if (tud_cdc_n_available(USB_CDC_ESP32) && !get_webusb_connected(WEBUSB_IDX_ESP32)) {
-        length = tud_cdc_n_read(USB_CDC_ESP32, buffer, sizeof(buffer));
-        uart_write_blocking(UART_ESP32, buffer, length);
+    if (!esp32_msc_active) {
+        if (tud_cdc_n_available(USB_CDC_ESP32) && !get_webusb_connected(WEBUSB_IDX_ESP32)) {
+            length = tud_cdc_n_read(USB_CDC_ESP32, buffer, sizeof(buffer));
+            uart_write_blocking(UART_ESP32, buffer, length);
+        }
     }
 
     if (tud_cdc_n_available(USB_CDC_FPGA) && !fpga_loopback_active && !get_webusb_connected(WEBUSB_IDX_FPGA)) {
@@ -290,6 +303,14 @@ void fpga_loopback(bool enable) {
     if (enable) {
         apply_line_coding(USB_CDC_FPGA);
     }
+}
+
+void uart_esp32_msc(bool enable) {
+    esp32_msc_active = enable;
+    apply_line_coding(USB_CDC_ESP32);
+    char logbuf[64];
+    sprintf(logbuf, "MSC uart state change to %s\r\n", enable ? "enabled" : "disabled");
+    cdc_send(0, logbuf, strlen(logbuf));
 }
 
 bool prev_dtr = false;

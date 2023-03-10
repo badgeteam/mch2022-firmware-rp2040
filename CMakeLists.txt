@@ -75,6 +75,7 @@ add_executable(${NAME}
     lcd.c
     i2c_peripheral.c
     ws2812.c
+    msc.c
 )
 
 pico_generate_pio_header(${NAME} ${CMAKE_CURRENT_LIST_DIR}/ws2812.pio OUTPUT_DIR ${CMAKE_CURRENT_LIST_DIR}/generated)
@@ -98,6 +99,7 @@ target_link_libraries(${NAME}
     hardware_pio
     hardware_pwm
     hardware_adc
+    hardware_dma
     i2c_slave
     tinyusb_device
     tinyusb_board

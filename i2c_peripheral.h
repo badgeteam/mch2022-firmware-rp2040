@@ -24,6 +24,11 @@ void i2c_set_crash_debug_state(bool crashed, bool debug);
 void i2c_set_reset_attempted(bool attempted);
 bool i2c_get_reset_allowed();
 
+void i2c_set_msc_state(uint8_t state);
+uint8_t i2c_get_msc_control();
+uint32_t i2c_get_msc_block_count(uint8_t disk);
+uint16_t i2c_get_msc_block_size(uint8_t disk);
+
 enum {
     // 0-7
     I2C_REGISTER_FW_VER,
@@ -210,10 +215,23 @@ enum {
     I2C_REGISTER_WS2812_LED9_DATA1,
     I2C_REGISTER_WS2812_LED9_DATA2,
     I2C_REGISTER_WS2812_LED9_DATA3,
-    I2C_REGISTER_RESERVED23,
-    I2C_REGISTER_RESERVED24,
-    I2C_REGISTER_RESERVED25,
-    I2C_REGISTER_RESERVED26,
+    I2C_REGISTER_MSC_CONTROL,
+    I2C_REGISTER_MSC_STATE,
+    I2C_REGISTER_MSC0_BLOCK_COUNT_LO_A,
+    I2C_REGISTER_MSC0_BLOCK_COUNT_LO_B,
 
-    // ... (128-255)
+    // 144-152
+    I2C_REGISTER_MSC0_BLOCK_COUNT_LO_C,
+    I2C_REGISTER_MSC0_BLOCK_COUNT_HI,
+    I2C_REGISTER_MSC0_BLOCK_SIZE_LO,
+    I2C_REGISTER_MSC0_BLOCK_SIZE_HI,
+    I2C_REGISTER_MSC1_BLOCK_COUNT_LO_A,
+    I2C_REGISTER_MSC1_BLOCK_COUNT_LO_B,
+    I2C_REGISTER_MSC1_BLOCK_COUNT_LO_C,
+    I2C_REGISTER_MSC1_BLOCK_COUNT_HI,
+    
+    // 153-155
+    I2C_REGISTER_MSC1_BLOCK_SIZE_LO,
+    I2C_REGISTER_MSC1_BLOCK_SIZE_HI,
+    
 };

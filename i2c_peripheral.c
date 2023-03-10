@@ -251,6 +251,10 @@ void i2c_handle_register_write(uint8_t reg, uint8_t value) {
                 }
                 break;
             }
+        case I2C_REGISTER_MSC_CONTROL:
+            i2c_registers.registers[I2C_REGISTER_MSC_STATE] = (i2c_registers.registers[I2C_REGISTER_MSC_CONTROL] & 0xFE) | (i2c_registers.registers[I2C_REGISTER_MSC_CONTROL] & 0x01);
+            uart_esp32_msc(i2c_registers.registers[I2C_REGISTER_MSC_CONTROL] & 0x01); // Set UART mode
+            break;
         default:
             break;
     };
@@ -373,7 +377,9 @@ void i2c_task() {
     }
 }
 
-void i2c_usb_set_mounted(bool mounted) { usb_mounted = mounted; }
+void i2c_usb_set_mounted(bool mounted) {
+    usb_mounted = mounted;
+}
 
 void i2c_usb_set_suspended(bool suspended, bool remote_wakeup_en) {
     usb_suspended         = suspended;
@@ -385,8 +391,34 @@ void i2c_set_webusb_mode(uint8_t mode) {
     // webusb_interrupt = true;
 }
 
-void i2c_set_crash_debug_state(bool crashed, bool debug) { i2c_registers.registers[I2C_REGISTER_CRASH_DEBUG] = (crashed & 1) | ((debug << 1) & 2); }
+void i2c_set_crash_debug_state(bool crashed, bool debug) {
+    i2c_registers.registers[I2C_REGISTER_CRASH_DEBUG] = (crashed & 1) | ((debug << 1) & 2);
+}
 
-void i2c_set_reset_attempted(bool attempted) { i2c_registers.registers[I2C_REGISTER_RESET_ATTEMPTED] = attempted; }
+void i2c_set_reset_attempted(bool attempted) {
+    i2c_registers.registers[I2C_REGISTER_RESET_ATTEMPTED] = attempted;
+}
 
-bool i2c_get_reset_allowed() { return !i2c_registers.registers[I2C_REGISTER_RESET_LOCK]; }
+bool i2c_get_reset_allowed() {
+    return !i2c_registers.registers[I2C_REGISTER_RESET_LOCK];
+}
+
+void i2c_set_msc_state(uint8_t state) {
+    i2c_registers.registers[I2C_REGISTER_MSC_STATE] = (state & 0xFE) | (i2c_registers.registers[I2C_REGISTER_MSC_STATE] & 0x01);
+}
+
+uint8_t i2c_get_msc_control() {
+    return i2c_registers.registers[I2C_REGISTER_MSC_CONTROL];
+}
+
+uint32_t i2c_get_msc_block_count(uint8_t disk) {
+    if (disk > 1) return 0;
+    uint8_t reg = (disk == 1) ? I2C_REGISTER_MSC1_BLOCK_COUNT_LO_A : I2C_REGISTER_MSC0_BLOCK_COUNT_LO_A;
+    return i2c_registers.registers[reg] + (i2c_registers.registers[reg+1] << 8) + (i2c_registers.registers[reg+2] << 16) + (i2c_registers.registers[reg+3] << 24);
+}
+
+uint16_t i2c_get_msc_block_size(uint8_t disk) {
+    if (disk > 1) return 0;
+    uint8_t reg = (disk == 1) ? I2C_REGISTER_MSC1_BLOCK_SIZE_LO : I2C_REGISTER_MSC0_BLOCK_SIZE_LO;
+    return i2c_registers.registers[reg] + (i2c_registers.registers[reg+1] << 8);
+}
