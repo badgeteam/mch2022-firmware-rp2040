@@ -1,4 +1,4 @@
-name: Release build -> ESP32 firmware PR
+name: Release build
 run-name: "Release build: ${{ github.event.release.name }}"
 
 on:
@@ -19,6 +19,10 @@ jobs:
     - name: Checkout project
       uses: actions/checkout@v3
 
+    - name: Extract firmware version
+      id: get_version
+      run: echo "fw_version=$(grep -oE 'FW_VERSION\s+(0x[a-fA-F0-9]{1,2})$' version.h | awk '{ print $2 }')" >> $GITHUB_OUTPUT
+
     - name: Checkout RPi Pico SDK
       uses: actions/checkout@v3
       with:
@@ -36,11 +40,24 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: >
         gh release upload "${{ github.event.release.tag_name }}"
-        "build/rp2040_flash_image.uf2#Flashable image"
+        build/rp2040_flash_image.uf2
         build/rp2040_firmware.bin
         build/rp2040_firmware.elf
         build/rp2040_bootloader.bin
         build/rp2040_bootloader.elf
+
+    - name: Dispatch ESP32 firmware hook
+      uses: peter-evans/repository-dispatch@v2
+      with:
+        token: ${{ secrets.ESP32_FIRMWARE_REPO_PAT }}
+        repository: badgeteam/mch2022-firmware-esp32
+        event-type: rp2040-firmware-released
+        client-payload: >
+          {
+            "tag": "${{ github.event.release.tag_name }}",
+            "fw_main": "rp2040_firmware.bin",
+            "fw_version": "${{ steps.get_version.outputs.fw_version }}"
+          }
 
     - name: Generate build report
       env:
@@ -78,22 +95,3 @@ jobs:
         **Diff with previous tag \`$previous_tag\`:** $tag_compare_url
 
         $EOF
-      continue-on-error: true
-
-    - id: get_version
-      name: Get firmware version
-      run: echo "fw_version=$(grep -oE 'FW_VERSION\s+(0x[a-fA-F0-9]{1,2})$' version.h | awk '{ print $2 }')" >> $GITHUB_OUTPUT
-
-    - name: Dispatch firmware integration -> ESP32 firmware
-      uses: peter-evans/repository-dispatch@v2
-      with:
-        token: ${{ secrets.ESP32_FIRMWARE_REPO_PAT }}
-        repository: badgeteam/mch2022-firmware-rp2040
-        event-type: rp2040-firmware-released
-        client-payload: >
-          {
-            "tag": ${{ github.event.release.tag_name }},
-            "fw_main": "rp2040_firmware.bin",
-            "fw_version": "${{ steps.get_version.outputs.fw_version }}"
-          }
-      continue-on-error: true
