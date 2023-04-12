@@ -1,0 +1,99 @@
+name: Release build -> ESP32 firmware PR
+run-name: "Release build: ${{ github.event.release.name }}"
+
+on:
+  release:
+    types: [released]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      PICO_SDK_PATH: .pico-sdk
+      build_artifact_name: build
+
+    steps:
+    - name: Install build tools
+      run: sudo apt-get install -y gcc-arm-none-eabi libnewlib-arm-none-eabi
+
+    - name: Checkout project
+      uses: actions/checkout@v3
+
+    - name: Checkout RPi Pico SDK
+      uses: actions/checkout@v3
+      with:
+        path: ${{ env.PICO_SDK_PATH }}
+        repository: raspberrypi/pico-sdk
+        submodules: true
+
+    - name: Build firmware
+      run: |
+        make build
+        cp build/mch2022.uf2 build/rp2040_flash_image.uf2
+
+    - name: Upload release assets
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: >
+        gh release upload "${{ github.event.release.tag_name }}"
+        "build/rp2040_flash_image.uf2#Flashable image"
+        build/rp2040_firmware.bin
+        build/rp2040_firmware.elf
+        build/rp2040_bootloader.bin
+        build/rp2040_bootloader.elf
+
+    - name: Generate build report
+      env:
+        repo: ${{ github.repository }}
+        tag:  ${{ github.event.release.tag_name }}
+        compare_url_template: ${{ format('/{0}/compare/{{base}}...{{head}}', github.repository) }}
+      run: |
+        previous_tag=$(git tag --sort '-refname' | grep -A1 "$tag" | tail -1)
+        tag_compare_url=$(sed "s!{base}!$previous_tag!; s!{head}!$tag!" <<< $compare_url_template)
+
+        build_size_main=$(du build/rp2040_firmware.bin | awk '{ print $1 }')
+        build_size_flash=$(du build/mch2022.uf2 | awk '{ print $1 }')
+
+        EOF=$(dd if=/dev/urandom bs=15 count=1 status=none | base64)
+
+        cat << $EOF >> $GITHUB_STEP_SUMMARY
+        # Release build summary 🚀🔨
+
+        **Release:** [${{ github.event.release.name }}](${{ github.event.release.html_url }})
+
+        | Output file             | Size                 |
+        | ----------------------- | -------------------- |
+        | \`rp2040_firmware.bin\` | $build_size_main kB  |
+        | \`mch2022.uf2\`         | $build_size_flash kB |
+
+        ## Build details
+        \`\`\`console
+        \$ du -h build/mch2022.uf2 build/rp2040_*.bin
+        $(du -h build/mch2022.uf2 build/rp2040_*.bin)
+        \`\`\`
+
+        ### Source
+        **Source tree:** [${repo}@\`${tag}\`](/${repo}/tree/${tag})
+
+        **Diff with previous tag \`$previous_tag\`:** $tag_compare_url
+
+        $EOF
+      continue-on-error: true
+
+    - id: get_version
+      name: Get firmware version
+      run: echo "fw_version=$(grep -oE 'FW_VERSION\s+(0x[a-fA-F0-9]{1,2})$' version.h | awk '{ print $2 }')" >> $GITHUB_OUTPUT
+
+    - name: Dispatch firmware integration -> ESP32 firmware
+      uses: peter-evans/repository-dispatch@v2
+      with:
+        token: ${{ secrets.ESP32_FIRMWARE_REPO_PAT }}
+        repository: badgeteam/mch2022-firmware-rp2040
+        event-type: rp2040-firmware-released
+        client-payload: >
+          {
+            "tag": ${{ github.event.release.tag_name }},
+            "fw_main": "rp2040_firmware.bin",
+            "fw_version": "${{ steps.get_version.outputs.fw_version }}"
+          }
+      continue-on-error: true

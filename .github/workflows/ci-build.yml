@@ -24,6 +24,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       PICO_SDK_PATH: .pico-sdk
+      build_artifact_name: build
 
     steps:
     - name: Install build tools
@@ -31,8 +32,6 @@ jobs:
 
     - name: Checkout project
       uses: actions/checkout@v3
-      with:
-        ref: ${{ github.event_name == 'pull_request' && github.head_ref || '' }}
 
     - name: Checkout RPi Pico SDK
       uses: actions/checkout@v3
@@ -44,6 +43,17 @@ jobs:
     - name: Build firmware
       run: make build
 
+    - name: Upload build to artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: ${{ env.build_artifact_name }}
+        path: |
+          build/mch2022.uf2
+          build/rp2040_firmware.bin
+          build/rp2040_firmware.elf
+          build/rp2040_bootloader.bin
+          build/rp2040_bootloader.elf
+
     - name: Generate build report
       env:
         base_branch: master
@@ -53,23 +63,30 @@ jobs:
         head_compare_url: ${{ github.event.compare }}
         new_commits_json: ${{ toJSON(github.event.commits) }}
       run: |
-        build_size_main=$(du build/mch2022.uf2 | awk '{ print $1 }')
         ref_compare_url=$(sed "s/{base}/$base_branch/; s/{head}/$commit_hash/" <<< $compare_url_template)
+        build_size_main=$(du build/rp2040_firmware.bin | awk '{ print $1 }')
+        build_size_flash=$(du build/mch2022.uf2 | awk '{ print $1 }')
 
-        cat << MarkdownHERE >> $GITHUB_STEP_SUMMARY
+        EOF=$(dd if=/dev/urandom bs=15 count=1 status=none | base64)
+
+        cat << $EOF >> $GITHUB_STEP_SUMMARY
         # Build summary 🔨${{ github.ref_name != 'master' && '🚧' || '' }}
 
         **Source:** ${{ github.ref_type }} \`$current_ref\` -> [${{ github.repository }}@\`${commit_hash:0:7}\`](${{ github.event.head_commit.url }})
 
-        **Size of \`mch2022.uf2\`:** $build_size_main kB
-
-        \`\`\`console
-        \$ du -h build/mch2022.uf2 build/rp2040_*.bin
-        $(du -h build/mch2022.uf2 build/rp2040_*.bin)
-        \`\`\`
+        | Output file             | Size                 |
+        | ----------------------- | -------------------- |
+        | \`rp2040_firmware.bin\` | $build_size_main kB  |
+        | \`mch2022.uf2\`         | $build_size_flash kB |
 
         ## Build details
         **Build trigger:** ${{ github.event.forced && '☢️ forced' || '' }} ${{ github.event_name }} \`${{ github.event.ref }}\`
+
+        ### Output files
+        \`\`\`console
+        \$ du -h build/mch2022.uf2 build/rp2040_*.bin build/rp2040_*.elf
+        $(du -h build/mch2022.uf2 build/rp2040_*.bin build/rp2040_*.elf)
+        \`\`\`
 
         ### Source
         **HEAD:** [${{ github.repository }}@\`${commit_hash:0:7}\`](${{ github.event.head_commit.url }}) on ${{ github.ref_type }} [$current_ref]($ref_compare_url)
@@ -84,5 +101,5 @@ jobs:
           "<sub>**Timestamp:** \(.timestamp)</sub>"
         ] | map("> \(.)\n") | join("")) | join("\n")' <<< $new_commits_json)
 
-        MarkdownHERE
+        $EOF
       continue-on-error: true
