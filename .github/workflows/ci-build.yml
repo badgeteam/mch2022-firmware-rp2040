@@ -1,0 +1,105 @@
+name: Build with Pico SDK
+
+on:
+  push:
+    branches:
+      - master
+
+    paths-ignore:
+      - '**.md'
+      - '.clang-format'
+      - '.gitignore'
+
+  pull_request:
+    branches: [master]
+    paths-ignore:
+      - '**.md'
+      - '.clang-format'
+      - '.gitignore'
+
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      PICO_SDK_PATH: .pico-sdk
+      build_artifact_name: build
+
+    steps:
+    - name: Install build tools
+      run: sudo apt-get install -y gcc-arm-none-eabi libnewlib-arm-none-eabi
+
+    - name: Checkout project
+      uses: actions/checkout@v3
+
+    - name: Checkout RPi Pico SDK
+      uses: actions/checkout@v3
+      with:
+        path: ${{ env.PICO_SDK_PATH }}
+        repository: raspberrypi/pico-sdk
+        submodules: true
+
+    - name: Build firmware
+      run: make build
+
+    - name: Upload build to artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: ${{ env.build_artifact_name }}
+        path: |
+          build/mch2022.uf2
+          build/rp2040_firmware.bin
+          build/rp2040_firmware.elf
+          build/rp2040_bootloader.bin
+          build/rp2040_bootloader.elf
+
+    - name: Generate build report
+      env:
+        base_branch: master
+        current_ref: ${{ github.ref_name }}
+        compare_url_template: ${{ format('/{0}/compare/{{base}}...{{head}}', github.repository) }}
+        commit_hash: ${{ github.event.after }}
+        head_compare_url: ${{ github.event.compare }}
+        new_commits_json: ${{ toJSON(github.event.commits) }}
+      run: |
+        ref_compare_url=$(sed "s/{base}/$base_branch/; s/{head}/$commit_hash/" <<< $compare_url_template)
+        build_size_main=$(du build/rp2040_firmware.bin | awk '{ print $1 }')
+        build_size_flash=$(du build/mch2022.uf2 | awk '{ print $1 }')
+
+        EOF=$(dd if=/dev/urandom bs=15 count=1 status=none | base64)
+
+        cat << $EOF >> $GITHUB_STEP_SUMMARY
+        # Build summary 🔨${{ github.ref_name != 'master' && '🚧' || '' }}
+
+        **Source:** ${{ github.ref_type }} \`$current_ref\` -> [${{ github.repository }}@\`${commit_hash:0:7}\`](${{ github.event.head_commit.url }})
+
+        | Output file             | Size                 |
+        | ----------------------- | -------------------- |
+        | \`rp2040_firmware.bin\` | $build_size_main kB  |
+        | \`mch2022.uf2\`         | $build_size_flash kB |
+
+        ## Build details
+        **Build trigger:** ${{ github.event.forced && '☢️ forced' || '' }} ${{ github.event_name }} \`${{ github.event.ref }}\`
+
+        ### Output files
+        \`\`\`console
+        \$ du -h build/mch2022.uf2 build/rp2040_*.bin build/rp2040_*.elf
+        $(du -h build/mch2022.uf2 build/rp2040_*.bin build/rp2040_*.elf)
+        \`\`\`
+
+        ### Source
+        **HEAD:** [${{ github.repository }}@\`${commit_hash:0:7}\`](${{ github.event.head_commit.url }}) on ${{ github.ref_type }} [$current_ref]($ref_compare_url)
+
+        **Diff with previous HEAD:** $head_compare_url
+
+        #### New commits
+        $(jq -r 'map([
+          "**Commit [`\(.id[0:7])`](\(.url)) by \(if .author.username then "@"+.author.username else .author.name end):**",
+          .message,
+          (if .committer.name != .author.name then "\n> <sub>**Committer:** \(.committer.name) <\(.committer.email)></sub>" else "" end),
+          "<sub>**Timestamp:** \(.timestamp)</sub>"
+        ] | map("> \(.)\n") | join("")) | join("\n")' <<< $new_commits_json)
+
+        $EOF
+      continue-on-error: true
