@@ -201,6 +201,7 @@ void uart_task(void) {
     if (length > 0) {
         if (get_webusb_connected(WEBUSB_IDX_ESP32)) {
             tud_vendor_n_write(WEBUSB_IDX_ESP32, buffer, length);
+            tud_vendor_n_flush(WEBUSB_IDX_ESP32);
         } else {
             cdc_send(0, buffer, length);
         }
@@ -221,6 +222,7 @@ void uart_task(void) {
         } else {
             if (get_webusb_connected(WEBUSB_IDX_FPGA)) {
                 tud_vendor_n_write(WEBUSB_IDX_FPGA, buffer, length);
+                tud_vendor_n_flush(WEBUSB_IDX_FPGA);
             } else {
                 cdc_send(1, buffer, length);
             }

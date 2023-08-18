@@ -5,7 +5,7 @@ which allows the ESP32 to read button states and control things like the FPGA co
 
 ## SDK version
 
-This firmware has to be built using pico-sdk version 1.3.1
+This firmware has been tested to work when built using pico-sdk version 1.3.1 and 1.5.1
 
 ## How to build
 1. [Set up the Pico SDK](https://datasheets.raspberrypi.com/pico/getting-started-with-pico.pdf#page=7) and try to [compile an example](https://datasheets.raspberrypi.com/pico/getting-started-with-pico.pdf#page=9) to check whether it's set up correctly
