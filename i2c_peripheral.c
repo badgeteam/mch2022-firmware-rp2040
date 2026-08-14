@@ -236,6 +236,7 @@ void i2c_handle_register_write(uint8_t reg, uint8_t value) {
                     break;
                 case 0x02:  // 32-bit (RGBW) mode
                     ws2812_enable(true);
+                    break;
                 case 0x00:
                 default:
                     ws2812_disable();
