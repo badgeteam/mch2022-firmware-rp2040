@@ -19,17 +19,17 @@ jobs:
         NEEDRESTART_MODE: a
       run: |
         sudo apt-get update
-        sudo apt-get install -y --no-install-recommends gcc-arm-none-eabi libnewlib-arm-none-eabi
+        sudo apt-get install -y --no-install-recommends gcc-arm-none-eabi libnewlib-arm-none-eabi libstdc++-arm-none-eabi-newlib
 
     - name: Checkout project
-      uses: actions/checkout@v3
+      uses: actions/checkout@v5
 
     - name: Extract firmware version
       id: get_version
       run: echo "fw_version=$(grep -oE 'FW_VERSION\s+(0x[a-fA-F0-9]{1,2})$' version.h | awk '{ print $2 }')" >> $GITHUB_OUTPUT
 
     - name: Checkout RPi Pico SDK
-      uses: actions/checkout@v3
+      uses: actions/checkout@v5
       with:
         path: ${{ env.PICO_SDK_PATH }}
         repository: raspberrypi/pico-sdk
@@ -52,7 +52,7 @@ jobs:
         build/rp2040_bootloader.elf
 
     - name: Dispatch ESP32 firmware hook
-      uses: peter-evans/repository-dispatch@v2
+      uses: peter-evans/repository-dispatch@v3
       with:
         token: ${{ secrets.ESP32_FIRMWARE_REPO_PAT }}
         repository: badgeteam/mch2022-firmware-esp32

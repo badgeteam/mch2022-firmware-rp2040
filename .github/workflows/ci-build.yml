@@ -33,13 +33,13 @@ jobs:
         NEEDRESTART_MODE: a
       run: |
         sudo apt-get update
-        sudo apt-get install -y --no-install-recommends gcc-arm-none-eabi libnewlib-arm-none-eabi
+        sudo apt-get install -y --no-install-recommends gcc-arm-none-eabi libnewlib-arm-none-eabi libstdc++-arm-none-eabi-newlib
 
     - name: Checkout project
-      uses: actions/checkout@v3
+      uses: actions/checkout@v5
 
     - name: Checkout RPi Pico SDK
-      uses: actions/checkout@v3
+      uses: actions/checkout@v5
       with:
         path: ${{ env.PICO_SDK_PATH }}
         repository: raspberrypi/pico-sdk
