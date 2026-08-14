@@ -97,13 +97,12 @@ void setup_i2c_registers(int param_ir_statemachine) {
 
     i2c_registers.registers[I2C_REGISTER_FW_VER] = FW_VERSION;
 
-    pico_unique_board_id_t id;
     pico_get_unique_board_id((pico_unique_board_id_t*) &i2c_registers.registers[I2C_REGISTER_UID0]);
 
     for (uint8_t index = 0; index < sizeof(i2c_controlled_gpios); index++) {
         gpio_init(i2c_controlled_gpios[index]);
         gpio_set_dir(i2c_controlled_gpios[index], false);
-        gpio_set_input_enabled(input1_gpios[index], true);
+        gpio_set_input_enabled(i2c_controlled_gpios[index], true);
     }
 
     for (uint8_t index = 0; index < sizeof(input1_gpios); index++) {
